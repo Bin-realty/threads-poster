@@ -444,55 +444,54 @@ async function bulkDelete(){
 }
 
 /* ---------- planner ---------- */
+let planSeg=store.get("fct_pseg")||"mine";
+const segOf=d=>d.ext?"co":(d.listing?"mine":"other");
 function renderPlan(){
   const v=$("#v-plan"); v.replaceChildren();
-  const now=nowT(); if(!planMonth) planMonth=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1)); if(!planDay) planDay=todayKey();
-  const by={}; S.drafts.forEach(d=>{ if(!["已發布","已排程","待發","處理中"].includes(d.status)) return; const t=tpe(whenOf(d)); if(t)(by[dk(t)]=by[dk(t)]||[]).push({t,d}); });
-  const p=el("div","panel"); const hd=el("div","row between"); const ttl=el("h3",null,planMonth.getUTCFullYear()+" 年 "+(planMonth.getUTCMonth()+1)+" 月"); ttl.style.margin="0"; hd.append(ttl);
-  const nv=el("div","row"); [["◀",-1],["今天",0],["▶",1]].forEach(([x,m])=>{const b=el("button","sm",x); b.addEventListener("click",()=>{ if(m) planMonth=new Date(Date.UTC(planMonth.getUTCFullYear(),planMonth.getUTCMonth()+m,1)); else { planMonth=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1)); planDay=todayKey(); } renderPlan(); }); nv.append(b);}); hd.append(nv); p.append(hd);
-  const cal=el("div","cal"); "日一二三四五六".split("").forEach(w=>cal.append(el("div","wd",w)));
-  const first=planMonth.getUTCDay(), days=new Date(Date.UTC(planMonth.getUTCFullYear(),planMonth.getUTCMonth()+1,0)).getUTCDate();
-  for(let i=0;i<first;i++){ const d=new Date(planMonth.getTime()-(first-i)*864e5); cal.append(dayBtn(d,by,true)); }
-  for(let i=1;i<=days;i++) cal.append(dayBtn(new Date(Date.UTC(planMonth.getUTCFullYear(),planMonth.getUTCMonth(),i)),by,false));
-  const rest=(7-(first+days)%7)%7; for(let i=1;i<=rest;i++) cal.append(dayBtn(new Date(Date.UTC(planMonth.getUTCFullYear(),planMonth.getUTCMonth()+1,i)),by,true));
-  p.append(cal);
-  const lg=el("div","row"); lg.style.fontSize="12px"; lg.style.color="var(--muted)"; lg.append(el("span","st s-已發布","已發布"),el("span","st s-已排程","排程中")); p.append(lg);
-  v.append(p);
-  const sd=tpe(planDay+"T00:00:00+08:00"); const items=(by[planDay]||[]).sort((a,b)=>a.t-b.t);
-  const dp=el("div","panel"); dp.style.marginTop="10px"; const h=el("h3",null,md(sd)+"（"+WD[sd.getUTCDay()]+"）的安排"); h.style.margin="0"; dp.append(h);
-  if(!items.length) dp.append(el("p","hint","這天還沒有貼文。在下面挑貼文、選時間，按「排進去」。"));
-  else { const sl=el("div"); items.forEach(x=>{ const s=el("div","slot"); const tb=el("button","t",label(x.d)+"・"+firstLine(x.d)); tb.addEventListener("click",()=>openEd(x.d)); s.append(el("time",null,hm(x.t)), tb, el("span","st s-"+x.d.status,x.d.status)); sl.append(s); }); dp.append(sl); }
-  v.append(dp);
-  const sp=el("div","panel"); sp.style.marginTop="10px"; const h2=el("h3",null,"排貼文進 "+md(sd)); h2.style.margin="0"; sp.append(h2);
-  sp.append(el("p","hint","1 選時間　2 勾貼文（只列「已確認」的草稿、文案庫、已發過的）　3 按排進去。勾的比時間多，會自動排到隔天同樣的時間。文案庫和已發過的會複製一份去排，原稿留著。還沒確認的草稿在「草稿」分頁。"));
-  const tc=el("div","chips"); planTimes.forEach(t=>{ const b=el("button","chip",t); b.setAttribute("aria-pressed","true"); b.title="點一下移除"; b.addEventListener("click",()=>{ planTimes=planTimes.filter(x=>x!==t); store.set("fct_times",planTimes.join(",")); renderPlan(); }); tc.append(b); });
+  const now=nowT(); if(!planDay||planDay<todayKey()) planDay=todayKey();
+  /* 1. 已確認文案 */
+  const ready=S.drafts.filter(d=>d.status==="待排"&&!d.library);
+  const hd=el("div","row between"); const h=el("h2"); h.append("已確認文案", el("small",null,ready.length+" 篇")); hd.append(h); v.append(hd);
+  const seg=el("div","chips"); [["mine","我的庫存"],["co","同事案件"],["other","知識文／其他"]].forEach(([k,t])=>{ const n=ready.filter(d=>segOf(d)===k).length; if(k==="other"&&!n) return; const b=el("button","chip",t+(n?" "+n:"")); b.setAttribute("aria-pressed",String(planSeg===k)); b.addEventListener("click",()=>{ planSeg=k; store.set("fct_pseg",k); renderPlan(); }); seg.append(b); }); v.append(seg);
+  const list=ready.filter(d=>segOf(d)===planSeg).sort((a,b)=>String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
+  const pl=el("div","picklist");
+  if(!list.length){ const e=el("div","empty"); e.append(el("b",null,"這裡沒有已確認的文案"),"到「草稿」寫好、按「確認，可以發了」，就會出現在這裡。"); pl.append(e); }
+  list.forEach(d=>{ const r=el("div","pick"+(planSel.has(d.id)?" on":"")); const cb=el("input"); cb.type="checkbox"; cb.checked=planSel.has(d.id); const u=coverOf(d); let im; if(u){ im=el("img"); im.src=u; im.alt=""; im.loading="lazy"; } else im=el("div","k",d.listing?"宅":"知"); const t=el("div","t"); t.append((d.topic?d.topic+"・":"")+firstLine(d), el("small",null,label(d))); const ed=el("button","sm","預覽"); ed.title="打開看這篇的內容和照片"; ed.addEventListener("click",e=>{ e.stopPropagation(); openEd(d); }); r.append(cb,im,t,ed); r.addEventListener("click",()=>{ planSel.has(d.id)?planSel.delete(d.id):planSel.add(d.id); renderPlan(); }); pl.append(r); });
+  v.append(pl);
+  /* 2. 選日期、時間 → 開始排程發文 */
+  const sp=el("div","panel"); sp.style.marginTop="10px";
+  const h2=el("h3",null,"勾好文案後，選日期和時間"); h2.style.margin="0"; sp.append(h2);
+  const dr=el("div","row"); const di=el("input"); di.type="date"; di.value=planDay; di.min=todayKey(); di.style.maxWidth="180px"; di.addEventListener("change",()=>{ planDay=di.value||todayKey(); renderPlan(); }); dr.append(el("span","hint","日期"),di); sp.append(dr);
+  const tc=el("div","chips"); tc.append(el("span","hint","時間")); planTimes.forEach(t=>{ const b=el("button","chip",t+" ✕"); b.setAttribute("aria-pressed","true"); b.title="點一下移除這個時間"; b.addEventListener("click",()=>{ planTimes=planTimes.filter(x=>x!==t); store.set("fct_times",planTimes.join(",")); renderPlan(); }); tc.append(b); });
   const at=el("div","addtime"); const ti=el("input"); ti.type="time"; ti.value="18:00"; const ab=el("button","sm","＋ 加時間"); ab.addEventListener("click",()=>{ if(ti.value&&!planTimes.includes(ti.value)){ planTimes=[...planTimes,ti.value].sort(); store.set("fct_times",planTimes.join(",")); renderPlan(); } }); at.append(ti,ab); tc.append(at); sp.append(tc);
-  const cands=S.drafts.filter(d=>["待排","已排程","已發布"].includes(d.status)||(d.library&&d.status==="草稿")).sort((a,b)=>(a.library?1:0)-(b.library?1:0)||(a.status==="已發布"?1:0)-(b.status==="已發布"?1:0)||String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
-  const srch=el("input"); srch.placeholder="搜尋貼文…"; srch.style.marginTop="4px"; sp.append(srch);
-  const pl=el("div","picklist"); sp.append(pl);
-  const pv=el("div","preview");
-  const drawPreview=()=>{ pv.replaceChildren(); const plan=planAssign(); if(!plan.length){ pv.append(el("span",null,"還沒勾貼文")); return; } plan.slice(0,8).forEach(x=>{ const s=el("span"); s.append(el("b",null,md(x.t)+" "+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,18)); pv.append(s); }); if(plan.length>8) pv.append(el("span",null,"…共 "+plan.length+" 篇")); };
-  const drawPick=()=>{ pl.replaceChildren(); const q=srch.value.trim(); cands.filter(d=>!q||(label(d)+firstLine(d)).includes(q)).slice(0,120).forEach(d=>{ const r=el("div","pick"+(planSel.has(d.id)?" on":"")); const cb=el("input"); cb.type="checkbox"; cb.checked=planSel.has(d.id); const u=coverOf(d); let im; if(u){ im=el("img"); im.src=u; im.alt=""; im.loading="lazy"; } else im=el("div","k",d.listing?"宅":"知"); const t=el("div","t"); t.append((d.topic?d.topic+"・":"")+firstLine(d), el("small",null,label(d)+(d.library?"・文案庫":d.status==="已發布"?"・已發過，會再發一次":d.status==="已排程"?"・已排 "+fmt(d.scheduledAt):"・已確認"))); const ed=el("button","sm quiet","看"); ed.title="打開看內容"; ed.addEventListener("click",e=>{ e.stopPropagation(); openEd(d); }); r.append(cb,im,t,ed); r.addEventListener("click",()=>{ planSel.has(d.id)?planSel.delete(d.id):planSel.add(d.id); drawPick(); drawPreview(); }); pl.append(r); }); };
-  srch.addEventListener("input",drawPick); drawPick(); sp.append(pv); drawPreview();
-  const go=el("button","primary","排進去"); go.addEventListener("click",async()=>{ const plan=planAssign(); if(!plan.length) return toast("先勾貼文"); if(!planTimes.length) return toast("先加一個時間"); go.disabled=true; let n=0; for(const x of plan){ try{ await scheduleCopy(x.d,x.t); n++; }catch(e){ toast("有一篇沒排成功："+e.message); } } planSel.clear(); toast("已排 "+n+" 篇"); await loadAll().catch(()=>{}); go.disabled=false; });
+  const plan=planAssign(); const pv=el("div","preview");
+  if(!planSel.size) pv.append(el("span",null,"還沒勾文案")); else if(!planTimes.length) pv.append(el("span",null,"還沒有時間，按「＋ 加時間」")); else { plan.forEach(x=>{ const s=el("span"); s.append(el("b",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,18)); pv.append(s); }); if(plan.length>planTimes.length) pv.append(el("span","hint","勾的比時間多，自動排到隔天同樣時間")); }
+  sp.append(pv);
+  const go=el("button","primary","開始排程發文"+(planSel.size?"（"+planSel.size+" 篇）":"")); go.disabled=!plan.length;
+  go.addEventListener("click",async()=>{ go.disabled=true; let n=0; for(const x of plan){ try{ await scheduleCopy(x.d,x.t); n++; }catch(e){ toast("有一篇沒排成功："+e.message); } } planSel.clear(); toast("已排 "+n+" 篇，時間到會自動發"); await loadAll().catch(()=>{}); go.disabled=false; });
   sp.append(go); v.append(sp);
-  v.append(renderRotation());
+  /* 3. 已排程 */
+  const sched=S.drafts.filter(d=>d.status==="已排程"&&d.scheduledAt).map(d=>({d,t:tpe(d.scheduledAt)})).filter(x=>x.t).sort((a,b)=>a.t-b.t);
+  const sh=el("h2"); sh.append("已排程", el("small",null,sched.length+" 篇")); v.append(sh);
+  if(!sched.length) v.append(el("p","hint","還沒有排程中的貼文。"));
+  else { let cur=null, box=null; sched.forEach(x=>{ const k=dk(x.t); if(k!==cur){ cur=k; box=el("div","panel"); box.style.marginTop="8px"; const dh=el("h3",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+(k===todayKey()?"　今天":"")); dh.style.margin="0 0 6px"; box.append(dh); v.append(box); }
+    const s=el("div","slot"); const tb=el("button","t",label(x.d)+"・"+firstLine(x.d)); tb.addEventListener("click",()=>openEd(x.d)); const cx=el("button","sm quiet","取消"); cx.title="取消排程，退回草稿"; cx.addEventListener("click",async()=>{ cx.disabled=true; try{ const body=Object.fromEntries(Object.entries(x.d).filter(([k2])=>!k2.startsWith("_"))); Object.assign(body,{status:"草稿",scheduledAt:"",updatedAt:new Date().toISOString(),error:""}); await putJSON(x.d._path,body,x.d._sha,"取消排程 "+x.d.id); toast("已取消，退回草稿。"); await loadAll().catch(()=>{}); }catch(e){ toast("沒成功："+e.message); cx.disabled=false; } }); s.append(el("time",null,hm(x.t)), tb, cx); box.append(s); }); }
+  const adv=el("details","lib"); adv.style.marginTop="12px"; const sm=el("summary"); const ah=el("h2"); ah.append("自動輪播", el("small",null,"進階，平常不用動")); sm.append(ah); adv.append(sm); adv.append(renderRotation()); v.append(adv);
 }
-function dayBtn(d,by,out){ const k=dk(d), b=el("button","d"+(out?" out":"")+(k===todayKey()?" now":"")+(k===planDay?" pick":"")); b.type="button"; b.append(el("span",null,String(d.getUTCDate()))); const dots=el("div","dots"); (by[k]||[]).slice(0,4).forEach(x=>dots.append(el("i",x.d.status==="已發布"?"on":"q"))); b.append(dots); b.addEventListener("click",()=>{ planDay=k; if(d.getUTCMonth()!==planMonth.getUTCMonth()) planMonth=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)); renderPlan(); }); return b; }
 function planAssign(){
   const sel=S.drafts.filter(d=>planSel.has(d.id)); if(!sel.length||!planTimes.length) return [];
   const taken=new Set(S.drafts.filter(d=>["已排程","待發","處理中"].includes(d.status)&&d.scheduledAt).map(d=>d.scheduledAt.slice(0,16)));
   const out=[]; let day=tpe(planDay+"T00:00:00+08:00"), i=0;
-  while(out.length<sel.length&&i<60){ for(const t of planTimes.slice().sort()){ if(out.length>=sel.length) break; const [hh,mm]=t.split(":").map(Number); const at=new Date(day.getTime()+hh*3600e3+mm*60e3); const iso=at.toISOString().slice(0,19).replace("Z","+08:00"); if(at.getTime()-8*3600e3<Date.now()+5*60e3||taken.has(iso.slice(0,16))) continue; out.push({d:sel[out.length],t:at,iso}); taken.add(iso.slice(0,16)); } day=new Date(day.getTime()+864e5); i++; }
+  while(out.length<sel.length&&i<60){ for(const t of planTimes.slice().sort()){ if(out.length>=sel.length) break; const [hh,mm]=t.split(":").map(Number); const at=new Date(day.getTime()+hh*3600e3+mm*60e3); const iso=at.toISOString().slice(0,19)+"+08:00"; if(at.getTime()-8*3600e3<Date.now()+5*60e3||taken.has(iso.slice(0,16))) continue; out.push({d:sel[out.length],t:at,iso}); taken.add(iso.slice(0,16)); } day=new Date(day.getTime()+864e5); i++; }
   return out;
 }
 async function scheduleCopy(d,t){
-  const iso=t.toISOString().slice(0,19).replace("Z","+08:00");
+  const iso=t.toISOString().slice(0,19)+"+08:00";
   if(d.library||d.status==="已發布"){ const id=newId("S"); const body=Object.fromEntries(Object.entries(d).filter(([k])=>!k.startsWith("_")&&!["post_id","permalink","postedAt","stats","dryOkAt","dryPhotos","queuedAt","deletedAt"].includes(k))); Object.assign(body,{id,status:"已排程",scheduledAt:iso,library:false,from_id:d.id,source:d.library?"library":"repost",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),error:""}); await putJSON("drafts/"+id+".json",body,null,"排程 "+id); }
   else { const body=Object.fromEntries(Object.entries(d).filter(([k])=>!k.startsWith("_"))); Object.assign(body,{status:"已排程",scheduledAt:iso,updatedAt:new Date().toISOString(),error:""}); await putJSON(d._path,body,d._sha,"排程 "+d.id); }
 }
 function renderRotation(){
-  const s=S.sched, p=el("div","panel"); p.style.marginTop="10px";
+  const s=S.sched, p=el("div","panel"); p.style.marginTop="6px";
   const hd=el("div","row between"); const h=el("h3",null,"輪播（每天自動發）"); h.style.margin="0"; const sw=el("label","switch"); const cb=el("input"); cb.type="checkbox"; cb.checked=!!s.active; const swt=el("span",null,s.active?"運行中":"已停"); sw.append(cb,swt); hd.append(h,sw); p.append(hd);
   p.append(el("p","hint","跟行銷快手一樣：設好時間和星期，系統每天在這些時間從名單裡輪流挑一篇發。同一個物件 72 小時內不會重發，會自動跳到下一篇。每發一次都會留一筆紀錄在「已發布」。"));
   const tc=el("div","chips"); (s.times||[]).forEach(t=>{ const b=el("button","chip",t); b.setAttribute("aria-pressed","true"); b.title="點一下移除"; b.addEventListener("click",()=>{ s.times=s.times.filter(x=>x!==t); renderPlan(); }); tc.append(b); });
@@ -600,7 +599,7 @@ function renderDrafts(){
   const v=$("#v-drafts"); v.replaceChildren();
   const byU=(a,b)=>String(b.updatedAt||"").localeCompare(String(a.updatedAt||""));
   const hd=el("div","row between"); const h=el("h2"); h.append("草稿"); hd.append(h); const nb=el("button","primary sm","＋ 新貼文"); nb.addEventListener("click",()=>openEd(null)); hd.append(nb); v.append(hd);
-  v.append(el("p","hint","流程：寫好、挑照片 → 按「確認，可以發了」→ 到「排程」排時間或立即發。確認後內容會鎖住，要改就「退回草稿」。"));
+  v.append(el("p","hint","寫好、挑照片 → 按「確認，可以發了」→ 到「排程」勾選、選時間、按「開始排程發文」。確認後就不能改；要改就在排程那邊「取消」退回來。"));
   const group=(title,arr,hint)=>{ if(!arr.length) return; const h=el("h2"); h.append(title, el("small",null,arr.length+" 篇")); v.append(h); if(hint) v.append(el("p","hint",hint)); const l=el("div","list"); arr.forEach(d=>l.append(card(d))); v.append(l); };
   group("需要處理", S.drafts.filter(d=>d.status==="失敗").sort(byU), "上次沒發成功，打開看原因，改好再確認。");
   group("已確認，等排程", S.drafts.filter(d=>d.status==="待排").sort(byU));
@@ -652,13 +651,13 @@ function openEd(d,day){
   const ready=["待排","已排程"].includes(init.status), hard=["待發","處理中","已發布","刪除中","已刪除"].includes(init.status), lock=ready||hard;
   ["#ed-listing","#ed-text","#ed-reply","#ed-pick","#ed-spec","#ed-sign","#ed-topic","#ed-upload","#ed-album","#ed-sync","#ed-pclear","#ext-name","#ext-ask","#ext-agent","#ext-spec"].forEach(x=>$(x).disabled=lock);
   $("#ed-lock").hidden=!ready;
-  $("#foot-draft").hidden=lock; $("#foot-ready").hidden=!ready; $("#foot-sched").hidden=!ready;
+  $("#foot-draft").hidden=lock; $("#foot-ready").hidden=!ready; $("#foot-sched").hidden=init.status!=="待排"; $("#ed-back").textContent=init.status==="已排程"?"取消排程，退回草稿":"退回草稿";
   $("#ed-del").hidden=!cur||["處理中","待發","刪除中"].includes(init.status);
   $("#ed-del").textContent=["已發布","已刪除"].includes(init.status)?"從清單移除":"刪除";
   const op=$("#ed-open"); op.hidden=!init.permalink||init.status==="已刪除"; if(init.permalink) op.href=init.permalink;
   $("#ed-unpub").hidden=init.status!=="已發布";
   const m=$("#ed-msg"); m.className="msg"; m.replaceChildren();
-  if(init.status==="已排程"&&init.scheduledAt) m.textContent="已排程 "+fmt(init.scheduledAt)+"。要改時間：選新時間再按「排程」；要改內容：按「退回草稿」（排程會取消）。";
+  if(init.status==="已排程"&&init.scheduledAt) m.textContent="已排程 "+fmt(init.scheduledAt)+"。要改時間或內容：按「取消排程」退回草稿，改好再確認、再排。";
   else if(init.status==="待排") m.textContent="已確認。選時間按「排程」，或「立即發送」。";
   else if(init.status==="已發布") m.textContent="已發布 "+fmt(init.postedAt)+"。要換內容：先「從 Threads 刪除」再重發；要再發一次：到「排程」勾它。";
   else if(init.status==="已刪除") m.textContent="已從 Threads 刪除。";
@@ -725,7 +724,7 @@ async function saveDraft(status,extra){
 }
 const bads=()=>edChecks().filter(x=>x[0]==="bad").length;
 $("#ed-save").addEventListener("click",async()=>{ if(await saveDraft("草稿")) toast("已存成草稿"); });
-$("#ed-confirm").addEventListener("click",async()=>{ const n=bads(); if(n){ $("#ed-chk").open=true; $("#ed-msg").textContent="還有 "+n+" 項要改（紅色 ✗）"; $("#ed-msg").className="msg err"; return; } if(await saveDraft("待排")){ toast("已確認。到「排程」排時間，或打開它按「立即發送」。"); } });
+$("#ed-confirm").addEventListener("click",async()=>{ const n=bads(); if(n){ $("#ed-chk").open=true; $("#ed-msg").textContent="還有 "+n+" 項要改（紅色 ✗）"; $("#ed-msg").className="msg err"; return; } if(cur&&cur.library){ const src=cur; cur=null; curSha=null; edId=newId(); const ok=await saveDraft("待排",{from_id:src.id,source:"library",library:false}); if(ok) toast("已從文案庫複製一份並確認，原稿留在文案庫。"); return; } if(await saveDraft("待排")){ toast("已確認。到「排程」排時間，或打開它按「立即發送」。"); } });
 $("#ed-back").addEventListener("click",async()=>{ if(!cur) return; const b=$("#ed-back"); b.disabled=true; try{ const body=Object.fromEntries(Object.entries(cur).filter(([k])=>!k.startsWith("_"))); Object.assign(body,{status:"草稿",scheduledAt:"",updatedAt:new Date().toISOString(),error:""}); const r=await putJSON(cur._path,body,cur._sha,"退回草稿 "+cur.id); Object.assign(cur,body,{_sha:r&&r.content&&r.content.sha}); $("#dlg").close(); render(); toast(cur.scheduledAt?"已退回草稿，排程已取消。":"已退回草稿，可以改了。"); }catch(e){ $("#ed-msg").textContent="沒成功："+e.message; $("#ed-msg").className="msg err"; } b.disabled=false; });
 $("#ed-send").addEventListener("click",async()=>{ const n=bads(); if(n){ $("#ed-chk").open=true; $("#ed-msg").textContent="還有 "+n+" 項要改（紅色 ✗）"; $("#ed-msg").className="msg err"; return; } if(await saveDraft("待發")){ toast("已送出，約 1–3 分鐘發布"); setTimeout(()=>loadAll().catch(()=>{}),45000); } });
 $("#ed-sched").addEventListener("click",async()=>{ const n=bads(); if(n){ $("#ed-chk").open=true; $("#ed-msg").textContent="還有 "+n+" 項要改（紅色 ✗）"; $("#ed-msg").className="msg err"; return; } const v=$("#ed-at").value; if(!v){ $("#ed-msg").textContent="先選排程時間"; return $("#ed-at").focus(); } const iso=v+":00+08:00"; if(new Date(iso).getTime()<Date.now()+5*60e3){ $("#ed-msg").textContent="排程時間要在 5 分鐘以後"; $("#ed-msg").className="msg err"; return; } if(await saveDraft("已排程",{scheduledAt:iso})) toast("已排程 "+fmt(iso)); });
