@@ -1,0 +1,32 @@
+name: 每日數據 Insights
+
+on:
+  schedule:
+    - cron: "23 22 * * *"   # 台北 06:23
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: threads-post
+  cancel-in-progress: false
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: 抓每篇數據
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+        run: python3 scripts/threads.py insights
+      - name: 儲存
+        run: |
+          git config user.name "threads-bot"
+          git config user.email "threads-bot@users.noreply.github.com"
+          git add stats.json
+          git diff --cached --quiet || git commit -m "每日數據 $(TZ=Asia/Taipei date '+%F %R')"
+          git pull --rebase -q && git push -q

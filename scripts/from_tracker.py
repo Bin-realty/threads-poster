@@ -25,17 +25,22 @@ def main(posts_dir, listings_dir):
         post = load(f)
         if post.get("status") not in ("待發", "已排程"):
             continue
-        code = post["listing"]
-        lf = next(Path(listings_dir).glob(f"**/{code}.json"), None)
-        if not lf:
-            out.append({"post": f.stem, "error": f"找不到庫存 {code}"})
-            continue
-        lst = load(lf)
-        album = str(lst.get("photos") or "").strip()
-        if "photos.app.goo.gl" not in album and "photos.google.com" not in album:
-            out.append({"post": f.stem, "error": f"{code} 沒有 Google 相簿連結"})
-            continue
-        slug = code.lower()
+        code = (post.get("listing") or "").strip()
+        if not code:
+            # 知識文：沒有物件、純文字
+            slug = "k-" + f.stem.lower()
+            album = ""
+        else:
+            lf = next(Path(listings_dir).glob(f"**/{code}.json"), None)
+            if not lf:
+                out.append({"post": f.stem, "error": f"找不到庫存 {code}"})
+                continue
+            lst = load(lf)
+            album = str(lst.get("photos") or "").strip()
+            if "photos.app.goo.gl" not in album and "photos.google.com" not in album:
+                out.append({"post": f.stem, "error": f"{code} 沒有 Google 相簿連結"})
+                continue
+            slug = code.lower()
         d = ROOT / "listings" / slug
         d.mkdir(parents=True, exist_ok=True)
         # 每次重新從相簿抓：清掉舊照片
@@ -45,7 +50,8 @@ def main(posts_dir, listings_dir):
         reply = (post.get("reply") or "").strip()
         rp = d / "reply.txt"
         rp.write_text(reply + "\n", encoding="utf-8") if reply else (rp.unlink() if rp.exists() else None)
-        (d / "album.txt").write_text(album + "\n", encoding="utf-8")
+        if album:
+            (d / "album.txt").write_text(album + "\n", encoding="utf-8")
         pk = d / "pick.txt"
         pick = (post.get("pick") or "").strip()
         pk.write_text(pick + "\n", encoding="utf-8") if pick else (pk.unlink() if pk.exists() else None)

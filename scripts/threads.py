@@ -29,6 +29,12 @@ TOKEN_META = ROOT / "token_meta.json"
 LISTINGS = ROOT / "listings"
 PUBLISH = ROOT / "publish"
 SYNC = ROOT / "sync"
+OUTBOX = ROOT / "outbox"
+STATS = ROOT / "stats.json"
+COMMENTS = ROOT / "comments.json"
+REPLY_LOG = ROOT / "reply_log.json"
+REPLY_CFG = ROOT / "config" / "reply.json"
+METRICS = ["views", "likes", "replies", "reposts", "quotes", "shares"]
 REPO = os.environ.get("GITHUB_REPOSITORY", "Bin-realty/threads-poster")
 TZ = timezone(timedelta(hours=8))
 MAX_TEXT = 500
@@ -579,6 +585,137 @@ def cmd_check():
     write_summary(f"## 鑰匙檢查\n✅ 帳號 @{me.get('username')}，24 小時內已發 {usage}/250 篇")
 
 
+# ---------- 數據與留言 ----------
+def all_posted(max_days=None):
+    out = []
+    now = datetime.now(TZ)
+    for f in sorted(LISTINGS.glob("*/posted.json")):
+        for e in json.loads(f.read_text(encoding="utf-8")):
+            if e.get("deleted") or not e.get("post_id"):
+                continue
+            t = datetime.fromisoformat(e["posted_at"])
+            if max_days and now - t > timedelta(days=max_days):
+                continue
+            out.append(dict(e, slug=f.parent.name))
+    return out
+
+
+def _load(p, default):
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else default
+
+
+def _dump(p, data):
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
+def cmd_insights():
+    """每篇已發布貼文的觀看與互動數 → stats.json"""
+    token, _ = load_token()
+    posts, errs = {}, []
+    for e in all_posted(max_days=90):
+        try:
+            r = call("GET", f"{API}/{e['post_id']}/insights", {"metric": ",".join(METRICS), "access_token": token}, retries=2)
+            m = {x["name"]: (x.get("values") or [{}])[0].get("value", (x.get("total_value") or {}).get("value", 0)) for x in r.get("data", [])}
+            posts[e["post_id"]] = dict({k: m.get(k, 0) for k in METRICS}, tracker_id=e.get("tracker_id"), slug=e["slug"],
+                                       posted_at=e["posted_at"], permalink=e.get("permalink", ""))
+        except Exception as ex:
+            errs.append(f"{e['post_id']}: {str(ex)[:120]}")
+    _dump(STATS, {"updated_at": datetime.now(TZ).isoformat(timespec="seconds"), "posts": posts, "errors": errs[:10]})
+    log(f"✅ 數據更新 {len(posts)} 篇，失敗 {len(errs)}")
+    write_summary(f"## 數據\n更新 {len(posts)} 篇" + ("\n" + "\n".join(errs[:5]) if errs else ""))
+
+
+def _paged(url, params, token, limit_pages=5):
+    items, n = [], 0
+    r = call("GET", url, dict(params, access_token=token), retries=2)
+    while True:
+        items += r.get("data", [])
+        n += 1
+        nxt = (r.get("paging") or {}).get("next")
+        if not nxt or n >= limit_pages:
+            return items
+        with urllib.request.urlopen(nxt, timeout=60) as resp:
+            r = json.loads(resp.read())
+
+
+def _reply(token, to_id, text):
+    rc = call("POST", f"{API}/me/threads", {"media_type": "TEXT", "text": text, "reply_to_id": to_id, "access_token": token})
+    wait_ready(rc["id"], token)
+    return call("POST", f"{API}/me/threads_publish", {"creation_id": rc["id"], "access_token": token})["id"]
+
+
+def cmd_comments():
+    """抓自己貼文底下的留言 → comments.json；送出 outbox/ 的手動回覆；（開啟時）誠實版自動回覆"""
+    import random
+    posted = all_posted(max_days=21)
+    outbox = sorted(p for p in OUTBOX.glob("*") if p.is_file() and not p.name.startswith(".")) if OUTBOX.exists() else []
+    if not posted and not outbox:
+        log("沒有近期貼文，也沒有待送回覆")
+        return
+    token, _ = load_token()
+    me = call("GET", f"{API}/me", {"fields": "username", "access_token": token}).get("username")
+    rlog = _load(REPLY_LOG, {})
+    # 1) 手動回覆
+    for f in outbox:
+        cid = f.stem
+        text = f.read_text(encoding="utf-8").strip()
+        try:
+            rid = _reply(token, cid, text)
+            rlog[cid] = {"at": datetime.now(TZ).isoformat(timespec="seconds"), "by": "manual", "reply_id": rid, "text": text}
+            log(f"✅ 已回覆留言 {cid}")
+        except Exception as ex:
+            rlog[cid] = {"at": datetime.now(TZ).isoformat(timespec="seconds"), "by": "manual", "error": str(ex)[:200], "text": text}
+            log(f"❌ 回覆 {cid} 失敗：{ex}")
+        f.unlink()
+        time.sleep(3)
+    # 2) 抓留言
+    items = []
+    for e in posted:
+        try:
+            conv = _paged(f"{API}/{e['post_id']}/conversation", {"fields": "id,text,username,timestamp,replied_to", "reverse": "false"}, token)
+        except Exception as ex:
+            log(f"⚠️ {e['post_id']} 讀留言失敗：{ex}")
+            continue
+        mine_to = {(c.get("replied_to") or {}).get("id") for c in conv if c.get("username") == me}
+        for c in conv:
+            if c.get("username") == me:
+                continue
+            items.append({"id": c["id"], "post_id": e["post_id"], "tracker_id": e.get("tracker_id"), "slug": e["slug"],
+                          "permalink": e.get("permalink", ""), "username": c.get("username", ""), "text": c.get("text", ""),
+                          "timestamp": c.get("timestamp", ""), "answered": c["id"] in mine_to or "reply_id" in rlog.get(c["id"], {})})
+    # 3) 自動回覆（預設關閉）
+    cfg = _load(REPLY_CFG, {"enabled": False})
+    if cfg.get("enabled"):
+        sent = 0
+        for it in items:
+            if it["answered"] or it["id"] in rlog or sent >= cfg.get("max_per_run", 8):
+                continue
+            txt = it["text"] or ""
+            if any(k in txt for k in cfg.get("ignore", [])):
+                continue
+            rule = next((r for r in cfg.get("rules", []) if any(k in txt for k in r["keywords"])), None)
+            if not rule:
+                continue
+            msg = random.choice(rule["replies"])
+            try:
+                rid = _reply(token, it["id"], msg)
+                rlog[it["id"]] = {"at": datetime.now(TZ).isoformat(timespec="seconds"), "by": "auto:" + rule["id"], "reply_id": rid, "text": msg}
+                it["answered"] = True
+                sent += 1
+                log(f"🤖 自動回覆 {it['username']}（{rule['id']}）")
+                time.sleep(random.randint(20, 40))
+            except Exception as ex:
+                rlog[it["id"]] = {"at": datetime.now(TZ).isoformat(timespec="seconds"), "by": "auto", "error": str(ex)[:200]}
+    for it in items:
+        if it["id"] in rlog:
+            it["reply"] = rlog[it["id"]]
+    old = _load(COMMENTS, {}).get("items")
+    if old != items:
+        _dump(COMMENTS, {"updated_at": datetime.now(TZ).isoformat(timespec="seconds"), "items": items})
+    _dump(REPLY_LOG, rlog) if rlog != _load(REPLY_LOG, {}) else None
+    log(f"留言 {len(items)} 則，未回 {sum(1 for i in items if not i['answered'])} 則")
+
+
 def write_summary(md):
     p = os.environ.get("GITHUB_STEP_SUMMARY")
     if p:
@@ -588,5 +725,5 @@ def write_summary(md):
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "sync": cmd_sync, "delete": cmd_delete, "scopes": cmd_scopes, "oauth": cmd_oauth, "cleanup": cmd_cleanup}.get(
+    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "sync": cmd_sync, "insights": cmd_insights, "comments": cmd_comments, "delete": cmd_delete, "scopes": cmd_scopes, "oauth": cmd_oauth, "cleanup": cmd_cleanup}.get(
         cmd, lambda: sys.exit(__doc__))()
