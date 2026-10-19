@@ -320,15 +320,16 @@ def cmd_import():
         d = LISTINGS / job.stem
         album = d / "album.txt"
         photos = d / "photos"
-        if not album.exists() or (photos.is_dir() and any(photos.iterdir())):
+        has_saved = (d / "album").is_dir() and any((d / "album").glob("*.jpg"))
+        if (not album.exists() and not has_saved) or (photos.is_dir() and any(photos.iterdir())):
             continue
-        link = album.read_text(encoding="utf-8").strip().split()[0]
+        link = album.read_text(encoding="utf-8").strip().split()[0] if album.exists() else ""
         pick_f = d / "pick.txt"
         meta_f = d / "album_meta.json"
         meta = json.loads(meta_f.read_text(encoding="utf-8")) if meta_f.exists() else {}
         saved = sorted((d / "album").glob("*.jpg")) if (d / "album").is_dir() else []
         photos.mkdir(parents=True, exist_ok=True)
-        if saved and meta.get("link") == link:
+        if saved and (not link or meta.get("link") == link or meta.get("source") == "upload"):
             # 用「同步照片」存下來的相簿，編號和追蹤台縮圖一致
             order = parse_pick(pick_f.read_text(encoding="utf-8"), len(saved)) if pick_f.exists() else list(range(1, len(saved) + 1))
             order = order[:MAX_CAROUSEL]
@@ -336,6 +337,8 @@ def cmd_import():
                 (photos / f"{n:02d}.jpg").write_bytes(saved[i - 1].read_bytes())
             log(f"✅ {job.stem}：用已同步相簿（{len(saved)} 張，{meta.get('synced_at','')}），選 {len(order)} 張")
         else:
+            if not link:
+                raise SystemExit(f"{job.stem}：沒有照片，也沒有相簿連結")
             urls = album_photo_urls(link)
             if not urls:
                 raise SystemExit(f"{job.stem}：相簿裡找不到照片（連結失效或相簿未公開分享）")
@@ -366,6 +369,8 @@ def cmd_sync():
         d = LISTINGS / slug
         try:
             link = job.read_text(encoding="utf-8").strip().split()[0]
+            if not link:
+                raise SystemExit(f"{job.stem}：沒有照片，也沒有相簿連結")
             urls = album_photo_urls(link)
             if not urls:
                 raise RuntimeError("相簿裡找不到照片（連結失效或相簿未公開分享）")
