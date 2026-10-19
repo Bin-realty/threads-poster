@@ -4,104 +4,213 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Threads-Bin</title>
-<meta name="theme-color" content="#14181f">
+<meta name="theme-color" content="#F3F4F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101216" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Threads-Bin">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
-:root{--bg:#f6f4ef;--surface:#fff;--fg:#1d2128;--muted:#6b7280;--line:#e3dfd6;--accent:#b4532a;--accent-fg:#fff;--ok:#2f7d4f;--ok-soft:#e3f2e8;--warn:#a15c00;--warn-soft:#fdf0d9;--bad:#b42318;--bad-soft:#fde4e1;--f:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
-@media (prefers-color-scheme:dark){:root{--bg:#14181f;--surface:#1c222b;--fg:#e8e6e1;--muted:#9aa3ad;--line:#2c3440;--accent:#e07a4f;--accent-fg:#14181f;--ok:#6cc58f;--ok-soft:#1d3326;--warn:#f0b35a;--warn-soft:#3a2d16;--bad:#ff8a80;--bad-soft:#3d1f1d}}
+:root{
+  --bg:#F3F4F6;--surface:#FFFFFF;--fg:#15181D;--muted:#5F6672;--line:#DCDFE5;--soft:#EBEDF2;
+  --accent:#3447B5;--accent-fg:#FFFFFF;--accent-soft:#E4E8FA;
+  --ok:#1E7A46;--ok-soft:#DFF2E6;--queue:#9A5B00;--queue-soft:#FFF1D9;--bad:#B3261E;--bad-soft:#FBE7E5;
+  --f-display:"Noto Serif TC","Songti TC",serif;--f:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#101216;--surface:#181B21;--fg:#E7E9EE;--muted:#9AA2AF;--line:#2A2F39;--soft:#20242C;
+  --accent:#9DACFF;--accent-fg:#0F1540;--accent-soft:#232A4D;
+  --ok:#7ACB98;--ok-soft:#163323;--queue:#F0B65C;--queue-soft:#36290F;--bad:#F2877F;--bad-soft:#3A1F1D;
+  color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--f);-webkit-text-size-adjust:100%}
-.wrap{max-width:980px;margin:0 auto;padding:12px 16px 80px}
-header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-h1{font-size:19px;margin:0}
-h2{font-size:16px;margin:16px 0 8px}
-.sub{font-size:12px;color:var(--muted)}
-button,input,select,textarea{font:inherit;color:inherit}
-button{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 12px;cursor:pointer}
-button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:700}
-button.danger{color:var(--bad)}
-button.small{padding:4px 10px;font-size:13px}
-button:disabled{opacity:.5;cursor:default}
-input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 10px;width:100%;min-width:0}
-textarea{resize:vertical}
-nav.tabs{display:flex;gap:4px;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;position:sticky;top:0;z-index:5}
-nav.tabs button{border:none;background:none;white-space:nowrap;border-radius:8px}
-nav.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);font-weight:700}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;cursor:pointer;text-align:left;width:100%}
-.card .t{font-weight:700}
-.card .m{font-size:13px;color:var(--muted)}
-.list{display:flex;flex-direction:column;gap:8px}
-.s-已發布{border-left-color:var(--ok)}.s-已排程,.s-待發,.s-處理中{border-left-color:var(--warn)}.s-失敗{border-left-color:var(--bad)}
-.pill{display:inline-block;font-size:12px;border-radius:999px;padding:1px 8px;background:var(--line)}
-.pill.s-已發布{background:var(--ok-soft);color:var(--ok)}.pill.s-已排程,.pill.s-待發,.pill.s-處理中{background:var(--warn-soft);color:var(--warn)}.pill.s-失敗{background:var(--bad-soft);color:var(--bad)}
-.empty{border:1px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--muted)}
-.hint{font-size:13px;color:var(--muted)}
-.msg{font-size:13px}.msg.err{color:var(--bad)}
-dialog{border:none;border-radius:14px;padding:0;width:min(720px,calc(100vw - 16px));max-height:calc(100dvh - 16px);background:var(--surface);color:var(--fg)}
-dialog::backdrop{background:rgba(0,0,0,.45)}
-.ed{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
-.field{display:flex;flex-direction:column;gap:4px}
-.field>span{font-size:12px;color:var(--muted)}
-.counter{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right}.counter.over{color:var(--bad);font-weight:700}
-.checks{list-style:none;padding:0;margin:0;font-size:13px;display:flex;flex-direction:column;gap:2px}
-.checks .ok{color:var(--ok)}.checks .bad{color:var(--bad)}.checks .warn{color:var(--warn)}
-.foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--surface);padding-top:8px;border-top:1px solid var(--line)}
-.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px}
-.pth{position:relative;padding:0;border:2px solid transparent;border-radius:8px;overflow:hidden;aspect-ratio:1;background:var(--line)}
-.pth img{width:100%;height:100%;object-fit:cover;display:block;opacity:.55}
-.pth.on{border-color:var(--accent)}.pth.on img{opacity:1}
-.pth .n{position:absolute;top:3px;left:3px;min-width:20px;height:20px;border-radius:999px;background:var(--accent);color:var(--accent-fg);font:700 12px/20px var(--mono);text-align:center;padding:0 4px}
-.pth .ix{position:absolute;right:3px;bottom:2px;font:11px var(--mono);color:#fff;text-shadow:0 0 3px #000}
-.week{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:6px;overflow-x:auto}
-.wday{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;min-height:140px}
-.wday.today{border-color:var(--accent)}
-.wday h4{margin:0;font-size:12px;color:var(--muted)}
-.witem{border:none;border-left:3px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 7px;text-align:left;font-size:12px;display:flex;flex-direction:column}
-.witem b{font-family:var(--mono)}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-.kpi .v{font:700 22px var(--mono)}.kpi .k{font-size:12px;color:var(--muted)}
-.tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-th:first-child,td:first-child{text-align:left;white-space:normal}
-.bar{height:8px;border-radius:4px;background:var(--accent);min-width:2px}
-.cmt{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
-.cmt .who{font-size:13px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
-.cmt .txt{white-space:pre-wrap;overflow-wrap:anywhere}
-.tag{font-size:11px;border-radius:999px;padding:1px 8px;background:var(--warn-soft);color:var(--warn)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--f)}
 a{color:var(--accent)}
-#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:99;max-width:calc(100vw - 32px)}
-.setup{max-width:520px;margin:30px auto;display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;line-height:1.3}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:700}
+button.quiet{background:transparent;border-color:transparent;color:var(--muted)}
+button.danger{color:var(--bad)}
+button.sm{padding:5px 11px;font-size:13px;border-radius:8px}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+textarea{resize:vertical;line-height:1.6}
+@media (prefers-reduced-motion:no-preference){dialog[open]{animation:pop .18s ease-out}@keyframes pop{from{transform:translateY(8px);opacity:0}}}
+
+/* ---------- shell ---------- */
+.shell{max-width:860px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-left)) calc(84px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right))}
+@media (min-width:641px){.shell{padding-bottom:48px}}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+.top h1{font:700 24px/1.2 var(--f-display);margin:0;letter-spacing:.01em}
+.top .sub{font:13px var(--mono);color:var(--muted);margin-top:4px}
+.top .acts{display:flex;gap:8px;align-items:center}
+nav.tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px;position:sticky;top:8px;z-index:5}
+nav.tabs button{flex:1;border:none;background:transparent;border-radius:9px;padding:8px 4px;font-weight:700;color:var(--muted);display:flex;gap:5px;justify-content:center;align-items:baseline;white-space:nowrap}
+nav.tabs button small{font:500 12px var(--mono)}
+nav.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+@media (max-width:640px){
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;top:auto;margin:0;border-radius:0;border-width:1px 0 0;padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:20}
+  nav.tabs button{flex-direction:column;gap:2px;padding:6px 2px;font-size:12px;font-weight:500}
+  nav.tabs button[aria-selected="true"]{font-weight:700}
+  .top h1{font-size:22px}
+}
+h2{font:700 17px/1.3 var(--f-display);margin:22px 0 10px;display:flex;align-items:baseline;gap:10px}
+h2 small{font:500 13px var(--mono);color:var(--muted)}
+h2:first-child{margin-top:0}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.empty{border:1px dashed var(--line);border-radius:14px;padding:28px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--fg);margin-bottom:4px}
+
+/* ---------- setup ---------- */
+.setup{max-width:520px;margin:28px auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px}
+.setup h2{margin:0 0 6px}
+.setup ol{margin:12px 0;padding-left:20px;color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:4px}
+.setup ol b{color:var(--fg);font-weight:500}
+
+/* ---------- posts ---------- */
+.list{display:flex;flex-direction:column;gap:8px}
+.post{display:grid;grid-template-columns:64px 1fr;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:left;width:100%;cursor:pointer;align-items:start}
+.post:hover{border-color:var(--muted)}
+.post .cov{width:64px;height:64px;border-radius:10px;object-fit:cover;background:var(--soft);display:block}
+.post .cov.k{display:grid;place-items:center;font:700 26px var(--f-display);color:var(--muted)}
+.post .body{min-width:0;display:flex;flex-direction:column;gap:3px}
+.post .line1{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.post .line1 b{font-weight:500;color:var(--fg)}
+.post .line1 time{font-family:var(--mono)}
+.post .txt{font-size:15px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.post .m{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.post .m .err{color:var(--bad)}
+.st{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;white-space:nowrap}
+.st::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--line)}
+.st.s-已發布{color:var(--ok)}.st.s-已發布::before{background:var(--ok)}
+.st.s-已排程,.st.s-待發,.st.s-處理中{color:var(--queue)}.st.s-已排程::before,.st.s-待發::before,.st.s-處理中::before{background:var(--queue)}
+.st.s-失敗{color:var(--bad)}.st.s-失敗::before{background:var(--bad)}
+.st.s-草稿{color:var(--muted)}
+.today{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.today .head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.today .head b{font:700 17px var(--f-display)}
+.today .head span{font:13px var(--mono);color:var(--muted)}
+.rhythm{display:grid;grid-template-columns:repeat(18,1fr);gap:3px;height:22px;align-items:end}
+.rhythm i{display:block;height:6px;border-radius:3px;background:var(--soft)}
+.rhythm i.on{height:22px;background:var(--ok)}.rhythm i.q{height:22px;background:var(--queue)}
+.rhythm-l{display:flex;justify-content:space-between;font:11px var(--mono);color:var(--muted)}
+.today .items{display:flex;flex-direction:column;gap:6px}
+.today .it{display:flex;gap:10px;align-items:center;font-size:14px;cursor:pointer;background:none;border:none;padding:4px 0;text-align:left;width:100%}
+.today .it time{font:500 13px var(--mono);width:44px;flex:none}
+.today .it .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- week ---------- */
+.wk{display:grid;grid-template-columns:repeat(7,minmax(128px,1fr));gap:8px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x proximity}
+.wd{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:6px;min-height:150px;scroll-snap-align:start}
+.wd.now{border-color:var(--fg)}
+.wd h4{margin:0;font-size:12px;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.wd h4 b{font:700 15px var(--f-display);color:var(--fg)}
+.wd .add{border:none;background:none;color:var(--muted);padding:0 4px;font-size:16px;line-height:1}
+.wi{border:none;background:var(--soft);border-radius:8px;padding:6px 8px;text-align:left;font-size:12px;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.wi time{font:500 12px var(--mono)}
+.wi span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wi.s-已發布{box-shadow:inset 3px 0 0 var(--ok)}.wi.s-已排程,.wi.s-待發,.wi.s-處理中{box-shadow:inset 3px 0 0 var(--queue)}.wi.s-失敗{box-shadow:inset 3px 0 0 var(--bad)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+
+/* ---------- stats ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kpi b{display:block;font:700 26px/1.1 var(--mono)}
+.kpi span{font-size:12px;color:var(--muted)}
+.tbl{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:9px 12px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
+thead th{border-top:none;font-size:12px;font-weight:500;color:var(--muted)}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+td.n{font-family:var(--mono)}
+.bar{height:6px;border-radius:3px;background:var(--accent);min-width:3px}
+.best{display:grid;grid-template-columns:64px 1fr;gap:12px;background:var(--accent-soft);border-radius:14px;padding:12px;align-items:center;cursor:pointer;text-align:left;border:none;width:100%}
+.best .cov{width:64px;height:64px;border-radius:10px;object-fit:cover}
+.best b{font:700 15px var(--f-display)}
+
+/* ---------- comments ---------- */
+.cmt{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.cmt .who{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.cmt .who b{color:var(--fg);font-weight:700}
+.cmt .who time{font-family:var(--mono)}
+.cmt .txt{font-size:16px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.tag{font-size:12px;border-radius:999px;padding:1px 9px;background:var(--queue-soft);color:var(--queue)}
+.quick{display:flex;gap:6px;flex-wrap:wrap}
+.quick button{font-size:13px;border-radius:999px;padding:5px 12px;background:var(--soft);border-color:transparent}
+.cmt .done{font-size:13px;color:var(--muted)}
+
+/* ---------- listings ---------- */
+.lst{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center}
+.lst .nm{font-weight:700;font-size:16px}
+.lst .nm small{font:500 12px var(--mono);color:var(--muted);margin-right:6px}
+.lst .pr{font:500 15px var(--mono);white-space:nowrap}
+.lst .ph{grid-column:1/-1;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.strip{display:flex;gap:4px;overflow:hidden;border-radius:8px}
+.strip img{width:40px;height:40px;object-fit:cover;flex:none;background:var(--soft)}
+
+/* ---------- editor ---------- */
+dialog{border:none;border-radius:18px;padding:0;width:min(720px,calc(100vw - 16px));max-height:calc(100dvh - 16px);background:var(--surface);color:var(--fg)}
+dialog::backdrop{background:rgba(10,12,18,.5)}
+@media (max-width:640px){dialog{width:100vw;max-height:100dvh;border-radius:18px 18px 0 0;margin:auto 0 0}}
+.ed{padding:16px 18px 0;display:flex;flex-direction:column;gap:12px}
+.ed h2{margin:0;font-size:19px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field>span{font-size:12px;color:var(--muted)}
+.cnt{font:12px var(--mono);color:var(--muted);text-align:right}.cnt.over{color:var(--bad);font-weight:700}
+.checks{list-style:none;padding:0;margin:0;font-size:13px;display:flex;flex-direction:column;gap:3px}
+.checks .ok{color:var(--ok)}.checks .bad{color:var(--bad)}.checks .warn{color:var(--queue)}
+details.chk{border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+details.chk summary{cursor:pointer;font-size:14px;font-weight:500;display:flex;gap:8px;align-items:center}
+details.chk[open] summary{margin-bottom:8px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}
+.pth{position:relative;padding:0;border:2px solid transparent;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--soft)}
+.pth img{width:100%;height:100%;object-fit:cover;display:block;opacity:.5}
+.pth.on{border-color:var(--accent)}.pth.on img{opacity:1}
+.pth .n{position:absolute;top:3px;left:3px;min-width:20px;height:20px;border-radius:999px;background:var(--accent);color:var(--accent-fg);font:700 12px/20px var(--mono);text-align:center;padding:0 5px}
+.pth .ix{position:absolute;right:3px;bottom:2px;font:11px var(--mono);color:#fff;text-shadow:0 0 3px #000}
+.foot{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 18px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.foot .main{display:flex;gap:8px;align-items:center}
+.foot .main .primary{flex:1;padding:11px}
+.foot .sched{display:flex;gap:8px;align-items:center}
+.foot .sched input{flex:1}
+.foot .aux{display:flex;justify-content:space-between;gap:8px}
+.msg{font-size:13px;color:var(--muted);min-height:1em}.msg.err{color:var(--bad)}
+#toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:99;max-width:calc(100vw - 32px);box-shadow:0 6px 24px rgba(0,0,0,.25)}
+@media (min-width:641px){#toast{bottom:24px}}
 </style>
 </head>
 <body>
-<div class="wrap">
-<header>
+<div class="shell">
+<header class="top">
   <div><h1>Threads-Bin</h1><div class="sub" id="sync">尚未連線</div></div>
-  <div class="row"><button class="small" id="btn-refresh">重新整理</button><button class="small primary" id="btn-new">＋ 新貼文</button></div>
+  <div class="acts"><button class="sm quiet" id="btn-refresh">重新整理</button><button class="primary sm" id="btn-new">＋ 新貼文</button></div>
 </header>
 
 <div class="setup" id="setup" hidden>
-  <h2 style="margin:0">第一次使用：貼上 GitHub 鑰匙</h2>
-  <p class="hint">鑰匙只存在這台裝置的瀏覽器裡，直接跟 GitHub 溝通，不會傳到別的地方。換手機或電腦要再貼一次。</p>
-  <ol class="hint" style="padding-left:18px;margin:0">
-    <li>GitHub → 右上頭像 → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li>
-    <li>Repository access 選 <b>Only select repositories</b> → threads-poster</li>
+  <h2>連上你的 GitHub</h2>
+  <p class="hint">貼一次鑰匙就好。它只存在這台裝置的瀏覽器裡，頁面直接跟 GitHub 溝通，不經過任何人。</p>
+  <ol>
+    <li>GitHub → 頭像 → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li>
+    <li>Repository access：<b>Only select repositories</b> → threads-poster</li>
     <li>Permissions → Repository permissions → <b>Contents：Read and write</b></li>
-    <li>有效期限選 1 年 → 產生後複製，貼在下面</li>
+    <li>產生後複製，貼在下面</li>
   </ol>
   <input id="pat" type="password" placeholder="github_pat_…" autocomplete="off">
-  <div class="row"><button class="primary" id="btn-pat">連線</button><span class="msg" id="pat-msg"></span></div>
+  <div class="row" style="margin-top:10px"><button class="primary" id="btn-pat">連線</button><span class="msg" id="pat-msg"></span></div>
 </div>
 
 <main id="app" hidden>
-<nav class="tabs" role="tablist">
+<nav class="tabs" role="tablist" aria-label="Threads-Bin">
   <button data-v="posts" aria-selected="true">貼文 <small id="n-posts"></small></button>
-  <button data-v="week" aria-selected="false">排程表</button>
+  <button data-v="week" aria-selected="false">週曆</button>
   <button data-v="stats" aria-selected="false">數據</button>
-  <button data-v="cmts" aria-selected="false">留言待回 <small id="n-cmts"></small></button>
+  <button data-v="cmts" aria-selected="false">留言 <small id="n-cmts"></small></button>
   <button data-v="lst" aria-selected="false">物件</button>
 </nav>
 <section id="v-posts"></section>
@@ -114,32 +223,27 @@ a{color:var(--accent)}
 
 <dialog id="dlg">
   <div class="ed">
-    <h2 id="ed-title" style="margin:0">貼文</h2>
+    <div class="row between"><h2 id="ed-title">貼文</h2><button class="sm quiet" id="ed-cancel">關閉</button></div>
     <div class="row">
-      <label class="field" style="flex:1;min-width:200px"><span>物件（空白＝知識文）</span><select id="ed-listing"></select></label>
-      <button class="small" id="ed-spec">插入規格＋署名</button>
-      <button class="small" id="ed-sign">只插入署名</button>
+      <label class="field" style="flex:1;min-width:180px"><span>物件</span><select id="ed-listing"></select></label>
+      <button class="sm" id="ed-spec">插入規格＋署名</button>
+      <button class="sm" id="ed-sign">只插入署名</button>
     </div>
-    <label class="field"><span>主文（Threads 上限 500 字）— 文案可以在追蹤台用 AI 寫好送過來，或直接在這裡寫</span><textarea id="ed-text" rows="13"></textarea><span class="counter" id="ed-count">0 / 500</span></label>
+    <label class="field"><span>主文</span><textarea id="ed-text" rows="12" placeholder="可以在追蹤台用 AI 寫好送過來，或直接在這裡寫"></textarea><span class="cnt" id="ed-count">0 / 500</span></label>
     <label class="field"><span>發文後自動補的第一則留言</span><textarea id="ed-reply" rows="2"></textarea></label>
-    <div id="ed-photos">
-      <div class="row" style="justify-content:space-between"><span class="hint">點照片排順序（先點的是封面，最多 20 張）</span><button class="small" id="ed-pclear">全部取消</button></div>
+    <div id="ed-photos" class="field">
+      <div class="row between"><span>照片：先點的是封面，最多 20 張</span><button class="sm quiet" id="ed-pclear">全部取消</button></div>
       <div class="pgrid" id="ed-grid"></div>
       <p class="hint" id="ed-pnote"></p>
     </div>
-    <label class="field"><span>照片順序（點上面就會自動填）</span><input id="ed-pick" placeholder="例 3,1,5-12"></label>
-    <div><b style="font-size:14px">發文前檢查</b><ul class="checks" id="ed-checks"></ul></div>
+    <label class="field" id="ed-pickf"><span>照片順序（點上面會自動填）</span><input id="ed-pick" placeholder="例 3,1,5-12"></label>
+    <details class="chk" id="ed-chk"><summary id="ed-chksum">發文前檢查</summary><ul class="checks" id="ed-checks"></ul></details>
     <div class="msg" id="ed-msg" role="status"></div>
-    <div class="foot">
-      <button class="danger small" id="ed-del">刪除</button>
-      <div class="row">
-        <button id="ed-cancel">關閉</button>
-        <button id="ed-save">存草稿</button>
-        <input type="datetime-local" id="ed-at" style="width:auto">
-        <button id="ed-sched">排程</button>
-        <button class="primary" id="ed-send">立即發送</button>
-      </div>
-    </div>
+  </div>
+  <div class="foot">
+    <div class="main"><button class="primary" id="ed-send">立即發送</button><button id="ed-save">存草稿</button></div>
+    <div class="sched"><input type="datetime-local" id="ed-at" aria-label="排程時間"><button id="ed-sched">排程</button></div>
+    <div class="aux"><button class="sm danger quiet" id="ed-del">刪除</button></div>
   </div>
 </dialog>
 <div id="toast" hidden role="status"></div>
@@ -154,7 +258,7 @@ const INTERNAL=/三瀛|獨家|未曝光|底價|內部|同業/;
 const $=s=>document.querySelector(s);
 const el=(t,c,x)=>{const e=document.createElement(t); if(c)e.className=c; if(x!=null)e.textContent=x; return e;};
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}},del(k){try{localStorage.removeItem(k);}catch(e){}}};
-let PAT=store.get("fct_pat")||"", S={listings:[],drafts:[],stats:null,comments:null,rlog:{},tree:[],handled:new Set(),thumbs:{}}, view="posts", wk=0, cur=null, curSha=null;
+let PAT=store.get("fct_pat")||"", S={listings:[],drafts:[],stats:null,comments:null,rlog:{},tree:[],handled:new Set(),thumbs:{}}, view=store.get("fct_view")||"posts", wk=0, cur=null, curSha=null;
 function toast(t){const x=$("#toast"); x.textContent=t; x.hidden=false; clearTimeout(x._t); x._t=setTimeout(()=>x.hidden=true,4500);}
 const b64e=s=>btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 const b64d=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g,"")),c=>c.charCodeAt(0)));
@@ -171,9 +275,14 @@ async function delFile(path,sha,msg){ return gh("/contents/"+encodeURI(path),{me
 async function putJSON(path,obj,sha,msg){ try{ return await putFile(path,JSON.stringify(obj,null,1)+"\n",sha,msg); }catch(e){ if(e.status===409||e.status===422){ const f=await getFile(path); return putFile(path,JSON.stringify(obj,null,1)+"\n",f&&f.sha,msg); } throw e; } }
 const pad=n=>String(n).padStart(2,"0");
 const tpe=iso=>{const d=new Date(iso); return isNaN(d)?null:new Date(d.getTime()+8*3600e3);};
-const fmt=iso=>{const t=tpe(iso); return t?(t.getUTCMonth()+1)+"/"+t.getUTCDate()+" "+pad(t.getUTCHours())+":"+pad(t.getUTCMinutes()):"";};
+const hm=t=>pad(t.getUTCHours())+":"+pad(t.getUTCMinutes());
+const md=t=>(t.getUTCMonth()+1)+"/"+t.getUTCDate();
+const fmt=iso=>{const t=tpe(iso); return t?md(t)+" "+hm(t):"";};
+const dk=t=>t.toISOString().slice(0,10);
 const toLocal=iso=>{const t=tpe(iso); return t?t.toISOString().slice(0,16):"";};
+const todayKey=()=>dk(tpe(new Date().toISOString()));
 const newId=()=>{const t=tpe(new Date().toISOString()); return "D"+t.toISOString().slice(0,16).replace(/\D/g,"")+Math.random().toString(36).slice(2,5);};
+const firstLine=d=>String(d.text||"").split("\n").find(x=>x.trim())||"（主文空白）";
 
 async function loadAll(){
   $("#sync").textContent="讀取中…";
@@ -186,151 +295,195 @@ async function loadAll(){
   const ds=await Promise.all(dp.map(p=>getJSON(p,null).then(r=>r.data?Object.assign({id:p.slice(7,-5)},r.data,{_sha:r.sha,_path:p}):null).catch(()=>null)));
   S.drafts=ds.filter(Boolean);
   const pend=S.drafts.filter(d=>["待發","處理中"].includes(d.status)).length;
-  $("#sync").textContent="已同步 "+fmt(new Date().toISOString())+(pend?"｜發送中 "+pend+" 篇（每 20 秒自動更新）":"");
+  const t=tpe(new Date().toISOString());
+  $("#sync").textContent="同步 "+hm(t)+(pend?"・發送中 "+pend+" 篇":"");
   render();
   clearTimeout(loadAll._t); if(pend) loadAll._t=setTimeout(()=>loadAll().catch(()=>{}),20000);
 }
 function lst(code){ return S.listings.find(x=>x.code===code); }
+function coverOf(d){ if(!d.listing) return null; const th=S.thumbs[d.listing.toLowerCase()]||[]; if(!th.length) return null; const p=parsePick(d.pick,th.length); return RAW+th[(p[0]||1)-1]; }
+function coverEl(d,cls){ const u=coverOf(d); if(u){ const im=el("img",cls||"cov"); im.src=u; im.alt=""; im.loading="lazy"; return im; } const k=el("div",(cls||"cov")+" k",d.listing?"宅":"知"); return k; }
+function statOf(d){ if(!S.stats||!S.stats.posts) return null; return Object.values(S.stats.posts).find(x=>x.tracker_id===d.id)||null; }
 function render(){
   const oc=openCmts().length; $("#n-cmts").textContent=oc?String(oc):"";
-  const pc=S.drafts.filter(d=>["草稿","已排程","待發","處理中","失敗"].includes(d.status)).length; $("#n-posts").textContent=pc?String(pc):"";
+  const pc=S.drafts.filter(d=>["已排程","待發","處理中","失敗"].includes(d.status)).length; $("#n-posts").textContent=pc?String(pc):"";
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.v===view)));
   ["posts","week","stats","cmts","lst"].forEach(v=>$("#v-"+v).hidden=v!==view);
   ({posts:renderPosts,week:renderWeek,stats:renderStats,cmts:renderCmts,lst:renderLst})[view]();
 }
-document.querySelector("nav.tabs").addEventListener("click",e=>{const b=e.target.closest("button"); if(b){view=b.dataset.v; render();}});
-const ORDER={"失敗":0,"處理中":1,"待發":1,"已排程":2,"草稿":3,"已發布":4};
+document.querySelector("nav.tabs").addEventListener("click",e=>{const b=e.target.closest("button"); if(b){view=b.dataset.v; store.set("fct_view",view); render(); window.scrollTo({top:0});}});
+
+/* ---------- posts ---------- */
+function whenOf(d){ return d.status==="已發布"?d.postedAt:(["已排程","失敗"].includes(d.status)&&d.scheduledAt?d.scheduledAt:d.updatedAt); }
 function card(d){
-  const c=el("button","card s-"+d.status); c.type="button"; const L=lst(d.listing);
-  const t=el("div","t"); t.append(el("span","pill s-"+d.status,d.status)," ",d.listing?(d.listing+" "+((L&&L.name)||"")):"知識文");
-  c.append(t, el("div",null,String(d.text||"").split("\n").find(Boolean)||"（主文空白）"));
-  const m=[]; if(d.status==="已排程") m.push("排程 "+fmt(d.scheduledAt)); if(d.status==="已發布") m.push("發布 "+fmt(d.postedAt)); if(d.error) m.push("原因："+d.error);
-  const s=statOf(d); if(s) m.push("👁 "+s.views+"　❤️ "+s.likes+"　💬 "+s.replies);
-  if(d.hook) m.push("招式："+d.hook); if(d.source==="tracker") m.push("來自追蹤台");
-  if(m.length) c.append(el("div","m",m.join("｜")));
-  c.addEventListener("click",()=>openEd(d)); return c;
+  const c=el("button","post"); c.type="button"; const L=lst(d.listing);
+  c.append(coverEl(d));
+  const b=el("div","body"), l1=el("div","line1");
+  l1.append(el("span","st s-"+d.status,d.status));
+  const w=whenOf(d); if(w&&d.status!=="草稿"){ const t=el("time",null,fmt(w)); l1.append(t); }
+  l1.append(el("b",null,d.listing?(d.listing+" "+((L&&L.name)||"")):"知識文"));
+  b.append(l1, el("div","txt",firstLine(d)));
+  const m=[]; const s=statOf(d); if(s) m.push("👁 "+s.views+"　❤️ "+s.likes+"　💬 "+s.replies); if(d.hook) m.push("招式："+d.hook); if(d.source==="tracker") m.push("來自追蹤台");
+  const mm=el("div","m"); m.forEach(x=>mm.append(el("span",null,x))); if(d.error) mm.append(el("span","err",d.error)); if(mm.childNodes.length) b.append(mm);
+  c.append(b); c.addEventListener("click",()=>openEd(d)); return c;
 }
 function renderPosts(){
   const v=$("#v-posts"); v.replaceChildren();
-  const today=S.drafts.filter(d=>d.status==="已發布"&&tpe(d.postedAt)&&tpe(d.postedAt).toISOString().slice(0,10)===tpe(new Date().toISOString()).toISOString().slice(0,10)).length;
-  v.append(el("p","hint","今天已發 "+today+" 篇。一天發很多篇時，物件文和知識文交錯、間隔至少 1–2 小時，比較不會被 Threads 當成洗版。"));
-  const ds=S.drafts.slice().sort((a,b)=>(ORDER[a.status]??9)-(ORDER[b.status]??9)||String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
-  if(!ds.length){ v.append(el("div","empty","還沒有貼文。按右上「＋ 新貼文」，或在追蹤台寫好文案送過來。")); return; }
-  const l=el("div","list"); ds.slice(0,120).forEach(d=>l.append(card(d))); v.append(l);
+  const tk=todayKey(), now=tpe(new Date().toISOString());
+  const todays=S.drafts.map(d=>({d,t:tpe(whenOf(d))})).filter(x=>x.t&&dk(x.t)===tk&&["已發布","已排程","待發","處理中"].includes(x.d.status)).sort((a,b)=>a.t-b.t);
+  const box=el("div","today"), head=el("div","head");
+  head.append(el("b",null,"今天 "+md(now)), el("span",null,todays.length?todays.filter(x=>x.d.status==="已發布").length+" 篇已發・"+todays.filter(x=>x.d.status!=="已發布").length+" 篇排程中":"還沒安排"));
+  box.append(head);
+  const r=el("div","rhythm"); for(let h=6;h<24;h++){ const i=el("i"); const hit=todays.find(x=>x.t.getUTCHours()===h); if(hit) i.className=hit.d.status==="已發布"?"on":"q"; r.append(i);} box.append(r);
+  const rl=el("div","rhythm-l"); ["06","12","18","24"].forEach(x=>rl.append(el("span",null,x))); box.append(rl);
+  if(todays.length){ const its=el("div","items"); todays.forEach(x=>{ const b=el("button","it"); b.type="button"; b.append(el("time",null,hm(x.t)), el("span","t",(x.d.listing||"知識")+"・"+firstLine(x.d)), el("span","st s-"+x.d.status,x.d.status)); b.addEventListener("click",()=>openEd(x.d)); its.append(b); }); box.append(its); }
+  else box.append(el("p","hint","按「＋ 新貼文」寫一篇，或從追蹤台送文案過來。物件文和知識文交錯、相隔 1–2 小時，最不像洗版。"));
+  v.append(box);
+  const group=(title,arr,open)=>{ if(!arr.length) return; const h=el("h2"); h.append(title, el("small",null,arr.length+" 篇")); v.append(h); const l=el("div","list"); arr.forEach(d=>l.append(card(d))); v.append(l); };
+  const byT=(a,b)=>String(whenOf(a)).localeCompare(String(whenOf(b)));
+  group("需要處理", S.drafts.filter(d=>d.status==="失敗").sort(byT).reverse());
+  group("排程中", S.drafts.filter(d=>["已排程","待發","處理中"].includes(d.status)).sort(byT));
+  group("草稿", S.drafts.filter(d=>d.status==="草稿").sort(byT).reverse());
+  group("已發布", S.drafts.filter(d=>d.status==="已發布").sort(byT).reverse().slice(0,60));
+  if(!S.drafts.length){ const e=el("div","empty"); e.append(el("b",null,"還沒有貼文"),"按右上「＋ 新貼文」開始，或在追蹤台寫好文案按「送到 Threads-Bin」。"); v.append(e); }
 }
+
+/* ---------- week ---------- */
 function renderWeek(){
   const v=$("#v-week"); v.replaceChildren();
-  const now=tpe(new Date().toISOString()), start=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+wk*7));
-  const h=el("div","row"); h.style.justifyContent="space-between";
-  const e7=new Date(start.getTime()+6*864e5); h.append(el("h2",null,(start.getUTCMonth()+1)+"/"+start.getUTCDate()+" – "+(e7.getUTCMonth()+1)+"/"+e7.getUTCDate()));
-  const nv=el("div","row"); [["◀",-1],["本週",0],["▶",1]].forEach(([t,d])=>{const b=el("button","small",t); b.addEventListener("click",()=>{wk=d?wk+d:0; renderWeek();}); nv.append(b);}); h.append(nv); v.append(h);
-  const by={}; S.drafts.forEach(d=>{ const w=d.status==="已發布"?d.postedAt:(d.scheduledAt&&["已排程","失敗"].includes(d.status)?d.scheduledAt:d.updatedAt); const t=w&&tpe(w); if(t)(by[t.toISOString().slice(0,10)]=by[t.toISOString().slice(0,10)]||[]).push([t,d]); });
-  const g=el("div","week"), wd="日一二三四五六";
-  for(let i=0;i<7;i++){ const d=new Date(start.getTime()+i*864e5), k=d.toISOString().slice(0,10), box=el("div","wday"+(k===now.toISOString().slice(0,10)?" today":""));
-    const hd=el("div","row"); hd.style.justifyContent="space-between"; hd.append(el("h4",null,"週"+wd[d.getUTCDay()]+" "+(d.getUTCMonth()+1)+"/"+d.getUTCDate()));
-    const add=el("button","small","＋"); add.title="這天排一篇"; add.addEventListener("click",()=>openEd(null,k)); hd.append(add); box.append(hd);
-    (by[k]||[]).sort((a,b)=>a[0]-b[0]).forEach(([t,x])=>{ const b=el("button","witem s-"+x.status); b.append(el("b",null,pad(t.getUTCHours())+":"+pad(t.getUTCMinutes())+" "+(x.listing||"知識")+"·"+x.status), el("span",null,(String(x.text||"").split("\n").find(Boolean)||"").slice(0,22))); b.addEventListener("click",()=>openEd(x)); box.append(b); });
+  const now=tpe(new Date().toISOString()), dow=(now.getUTCDay()+6)%7;
+  const start=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()-dow+wk*7)), e7=new Date(start.getTime()+6*864e5);
+  const h=el("div","row between"); const t=el("h2"); t.append(md(start)+" – "+md(e7)); h.append(t);
+  const nv=el("div","row"); [["◀",-1],["本週",0],["▶",1]].forEach(([x,d])=>{const b=el("button","sm",x); b.addEventListener("click",()=>{wk=d?wk+d:0; renderWeek();}); nv.append(b);}); h.append(nv); v.append(h);
+  const by={}; S.drafts.forEach(d=>{ const w=whenOf(d); const tt=w&&tpe(w); if(tt)(by[dk(tt)]=by[dk(tt)]||[]).push([tt,d]); });
+  const g=el("div","wk"), wd="一二三四五六日";
+  for(let i=0;i<7;i++){ const d=new Date(start.getTime()+i*864e5), k=dk(d), box=el("div","wd"+(k===dk(now)?" now":""));
+    const hd=el("h4"); hd.append(el("span",null,"週"+wd[i]), el("b",null,String(d.getUTCDate()))); const add=el("button","add","＋"); add.title="這天加一篇"; add.addEventListener("click",()=>openEd(null,k)); hd.append(add); box.append(hd);
+    (by[k]||[]).sort((a,b)=>a[0]-b[0]).forEach(([tt,x])=>{ const b=el("button","wi s-"+x.status); b.append(el("time",null,hm(tt)+" "+(x.listing||"知識")), el("span",null,firstLine(x))); b.addEventListener("click",()=>openEd(x)); box.append(b); });
     g.append(box); }
-  v.append(g, el("p","hint","綠＝已發布、橘＝排程／發送中、紅＝失敗、灰＝草稿（顯示最後修改日）。按「＋」在那天新增一篇。"));
+  v.append(g);
+  const lg=el("div","legend"); [["s-已發布","已發布"],["s-已排程","排程中"],["s-失敗","失敗"],["s-草稿","草稿（最後修改日）"]].forEach(([c,t])=>lg.append(el("span","st "+c,t))); v.append(lg);
 }
-function statOf(d){ if(!S.stats||!S.stats.posts) return null; const e=Object.values(S.stats.posts).find(x=>x.tracker_id===d.id); return e||null; }
+
+/* ---------- stats ---------- */
 const SLOTS=[["早上 6–11",6,11],["中午 11–14",11,14],["下午 14–18",14,18],["晚上 18–22",18,22],["深夜 22–6",22,30]];
-function grp(v,title,label,rows){ if(!rows.length) return; v.append(el("h2",null,title)); const mx=Math.max(...rows.map(r=>r.avg),1), w=el("div","tw"), t=el("table"); const th=el("tr"); [label,"篇數","平均觀看",""].forEach(x=>th.append(el("th",null,x))); t.append(th); rows.forEach(r=>{const tr=el("tr"); tr.append(el("td",null,r.k),el("td",null,String(r.n)),el("td",null,String(r.avg))); const td=el("td"); td.style.width="40%"; const b=el("div","bar"); b.style.width=Math.round(r.avg/mx*100)+"%"; td.append(b); tr.append(td); t.append(tr);}); w.append(t); v.append(w); }
+function grp(v,title,label,rows){ if(!rows.length) return; const h=el("h2"); h.append(title); v.append(h); const mx=Math.max(...rows.map(r=>r.avg),1), w=el("div","tbl"), t=el("table"); const th=el("thead"), tr0=el("tr"); [label,"篇數","平均觀看",""].forEach(x=>tr0.append(el("th",null,x))); th.append(tr0); t.append(th); const tb=el("tbody"); rows.forEach(r=>{const tr=el("tr"); tr.append(el("td",null,r.k),el("td","n",String(r.n)),el("td","n",String(r.avg))); const td=el("td"); td.style.width="38%"; const b=el("div","bar"); b.style.width=Math.round(r.avg/mx*100)+"%"; td.append(b); tr.append(td); tb.append(tr);}); t.append(tb); w.append(t); v.append(w); }
 function agg(items,keyFn){ const b={}; items.forEach(x=>{const k=keyFn(x); if(!k) return; const y=b[k]||(b[k]={n:0,v:0}); y.n++; y.v+=x.s.views||0;}); return Object.entries(b).map(([k,y])=>({k,n:y.n,avg:Math.round(y.v/y.n)})).sort((a,c)=>c.avg-a.avg); }
 function renderStats(){
   const v=$("#v-stats"); v.replaceChildren();
-  if(!S.stats||!S.stats.posts||!Object.keys(S.stats.posts).length){ v.append(el("div","empty","還沒有數據。每天早上 6:23 自動抓一次。")); return; }
-  v.append(el("p","hint","數據更新："+fmt(S.stats.updated_at)+"（每天 6:23）。剛發的貼文隔天才有完整數字。"));
+  if(!S.stats||!S.stats.posts||!Object.keys(S.stats.posts).length){ const e=el("div","empty"); e.append(el("b",null,"還沒有數據"),"每天早上 6:23 自動抓一次，剛發的貼文隔天才看得到。"); v.append(e); return; }
   const items=Object.entries(S.stats.posts).map(([pid,s])=>({pid,s,d:S.drafts.find(d=>d.id===s.tracker_id)||null}));
   const V=items.reduce((a,x)=>a+(x.s.views||0),0), E=items.reduce((a,x)=>a+(x.s.likes||0)+(x.s.replies||0)+(x.s.reposts||0)+(x.s.quotes||0)+(x.s.shares||0),0);
-  const k=el("div","kpis"); [["總觀看",V],["平均每篇",Math.round(V/items.length)],["互動率",V?(Math.round(E/V*1000)/10)+"%":"–"],["篇數",items.length]].forEach(([a,b])=>{const c=el("div","kpi"); c.append(el("div","v",String(b)),el("div","k",a)); k.append(c);}); v.append(k);
-  grp(v,"招式表現","招式",agg(items,x=>x.d&&x.d.hook));
-  grp(v,"發文時段表現","時段",agg(items,x=>{const t=tpe(x.s.posted_at); if(!t) return null; let h=t.getUTCHours(); if(h<6) h+=24; const s=SLOTS.find(y=>h>=y[1]&&h<y[2]); return s&&s[0];}));
+  const h=el("h2"); h.append("成效", el("small",null,"更新 "+fmt(S.stats.updated_at))); v.append(h);
+  const k=el("div","kpis"); [["總觀看",V],["平均每篇",Math.round(V/items.length)],["互動率",V?(Math.round(E/V*1000)/10)+"%":"–"],["已追蹤篇數",items.length]].forEach(([a,b])=>{const c=el("div","kpi"); c.append(el("b",null,String(b)),el("span",null,a)); k.append(c);}); v.append(k);
+  const best=items.slice().sort((a,b)=>(b.s.views||0)-(a.s.views||0))[0];
+  if(best&&best.d){ const b=el("button","best"); b.type="button"; b.style.marginTop="10px"; b.append(coverEl(best.d)); const bd=el("div"); bd.append(el("b",null,"觀看最高：👁 "+best.s.views), el("div","hint",firstLine(best.d))); b.append(bd); b.addEventListener("click",()=>openEd(best.d)); v.append(b); }
+  grp(v,"哪種開頭最有效","招式",agg(items,x=>x.d&&x.d.hook));
+  grp(v,"哪個時段最有效","時段",agg(items,x=>{const t=tpe(x.s.posted_at); if(!t) return null; let hh=t.getUTCHours(); if(hh<6) hh+=24; const s=SLOTS.find(y=>hh>=y[1]&&hh<y[2]); return s&&s[0];}));
   grp(v,"物件文 vs 知識文","類型",agg(items,x=>String(x.s.slug||"").startsWith("k-")?"知識文":"物件文"));
-  v.append(el("h2",null,"每篇明細"));
-  const w=el("div","tw"), t=el("table"), th=el("tr"); ["貼文","👁","❤️","💬","🔁","↗️","互動率"].forEach(x=>th.append(el("th",null,x))); t.append(th);
-  items.sort((a,b)=>String(b.s.posted_at).localeCompare(String(a.s.posted_at))).forEach(x=>{ const s=x.s, e=(s.likes||0)+(s.replies||0)+(s.reposts||0)+(s.quotes||0)+(s.shares||0), tr=el("tr"), td=el("td"); const a=el("a",null,fmt(s.posted_at)+" "+(String(s.slug).startsWith("k-")?"知識":String(s.slug).toUpperCase())+(x.d&&x.d.hook?"・"+x.d.hook:"")); a.href=s.permalink||"#"; a.target="_blank"; a.rel="noopener"; td.append(a); tr.append(td); [s.views,s.likes,s.replies,s.reposts,s.shares].forEach(n=>tr.append(el("td",null,String(n||0)))); tr.append(el("td",null,s.views?(Math.round(e/s.views*1000)/10)+"%":"–")); t.append(tr); });
-  w.append(t); v.append(w);
+  const h2=el("h2"); h2.append("每篇明細"); v.append(h2);
+  const w=el("div","tbl"), t=el("table"), th=el("thead"), tr0=el("tr"); ["貼文","👁","❤️","💬","🔁","互動率"].forEach(x=>tr0.append(el("th",null,x))); th.append(tr0); t.append(th); const tb=el("tbody");
+  items.sort((a,b)=>String(b.s.posted_at).localeCompare(String(a.s.posted_at))).forEach(x=>{ const s=x.s, e=(s.likes||0)+(s.replies||0)+(s.reposts||0)+(s.quotes||0)+(s.shares||0), tr=el("tr"), td=el("td"); const a=el("a",null,fmt(s.posted_at)+" "+(String(s.slug).startsWith("k-")?"知識":String(s.slug).toUpperCase())+(x.d&&x.d.hook?"・"+x.d.hook:"")); a.href=s.permalink||"#"; a.target="_blank"; a.rel="noopener"; td.append(a); tr.append(td); [s.views,s.likes,s.replies,s.reposts].forEach(n=>tr.append(el("td","n",String(n||0)))); tr.append(el("td","n",s.views?(Math.round(e/s.views*1000)/10)+"%":"–")); tb.append(tr); });
+  t.append(tb); w.append(t); v.append(w);
 }
-const INTENTS=[["看屋",/看屋|看房|帶看|預約|想看|\+1|＋1/],["價格",/多少|價格|價錢|開價|總價|單價|談|議價|便宜/],["位置",/哪裡|地址|在哪|位置|哪個社區|地點/],["還在嗎",/還在|還有嗎|賣掉|成交了/]];
+
+/* ---------- comments ---------- */
+const INTENTS=[["想看屋",/看屋|看房|帶看|預約|想看|\+1|＋1/],["問價格",/多少|價格|價錢|開價|總價|單價|談|議價|便宜/],["問位置",/哪裡|地址|在哪|位置|哪個社區|地點/],["問還在嗎",/還在|還有嗎|賣掉|成交了/]];
 const QUICK=["收到！聖斌私訊跟你約時間 📩 也可以直接 LINE：line.me/R/ti/p/@a0888","感謝詢問！細節聖斌私訊整理給你 📩 官方LINE：line.me/R/ti/p/@a0888","謝謝你的分享 🙏"];
 const pendingReply=id=>S.tree.includes("outbox/"+id+".txt");
 function openCmts(){ return ((S.comments&&S.comments.items)||[]).filter(c=>!c.answered&&!S.handled.has(c.id)&&!(S.rlog[c.id]&&S.rlog[c.id].reply_id)); }
 function renderCmts(){
   const v=$("#v-cmts"); v.replaceChildren();
-  v.append(el("p","hint","每 15 分鐘自動抓一次你貼文底下的留言"+(S.comments?"（最後 "+fmt(S.comments.updated_at)+"）":"")+"。回覆約 1–2 分鐘送出。自動回覆目前關閉。"));
   const op=openCmts().sort((a,b)=>String(b.timestamp).localeCompare(String(a.timestamp)));
-  if(!op.length) v.append(el("div","empty","沒有待回的留言 👍"));
+  const h=el("h2"); h.append("待回", el("small",null,S.comments?"每 15 分鐘更新・最近 "+fmt(S.comments.updated_at):"")); v.append(h);
+  if(!op.length){ const e=el("div","empty"); e.append(el("b",null,"沒有待回的留言"),"新留言每 15 分鐘抓一次。自動回覆目前關閉，每一則都由你決定。"); v.append(e); return; }
+  const l=el("div","list");
   op.forEach(c=>{
-    const d=el("div","cmt"), who=el("div","who"); who.append(el("b",null,"@"+c.username), el("span",null,fmt(c.timestamp)), el("span",null,String(c.slug||"").startsWith("k-")?"知識文":String(c.slug||"").toUpperCase()+" 貼文"));
+    const d=el("div","cmt"), who=el("div","who"); who.append(el("b",null,"@"+c.username), el("time",null,fmt(c.timestamp)), el("span",null,String(c.slug||"").startsWith("k-")?"知識文":String(c.slug||"").toUpperCase()+" 貼文"));
     INTENTS.filter(([,re])=>re.test(c.text||"")).forEach(([n])=>who.append(el("span","tag",n)));
     if(c.permalink){const a=el("a",null,"看貼文"); a.href=c.permalink; a.target="_blank"; a.rel="noopener"; who.append(a);}
     d.append(who, el("div","txt",c.text||""));
     const er=S.rlog[c.id]&&S.rlog[c.id].error; if(er) d.append(el("div","msg err","上次回覆失敗："+er));
-    if(pendingReply(c.id)){ d.append(el("div","msg","回覆送出中…")); v.append(d); return; }
-    const ta=el("textarea"); ta.rows=2; ta.placeholder="寫回覆（會公開回在這則留言下）";
-    const q=el("div","row"); QUICK.forEach(t=>{const b=el("button","small",t.slice(0,9)+"…"); b.title=t; b.addEventListener("click",()=>ta.value=t); q.append(b);});
-    const a=el("div","row"), s=el("button","small primary","送出回覆"), h=el("button","small","不回，標記已處理");
-    s.addEventListener("click",async()=>{ const t=ta.value.trim(); if(!t) return ta.focus(); if(/阿斌/.test(t)) return toast("請把「阿斌」改成聖斌"); s.disabled=true; try{ await putFile("outbox/"+c.id+".txt",t,null,"回覆留言 @"+c.username); toast("已送出，約 1–2 分鐘出現在 Threads"); S.tree.push("outbox/"+c.id+".txt"); renderCmts(); setTimeout(()=>loadAll().catch(()=>{}),90000);}catch(e){ toast("送出失敗："+e.message); s.disabled=false; } });
-    h.addEventListener("click",async()=>{ h.disabled=true; try{ await putFile("handled/"+c.id+".txt","1",null,"留言已處理"); S.handled.add(c.id); render(); }catch(e){ toast("失敗："+e.message); h.disabled=false; } });
-    a.append(s,h); d.append(ta,q,a); v.append(d);
+    if(pendingReply(c.id)){ d.append(el("div","done","回覆送出中，約 1–2 分鐘出現在 Threads")); l.append(d); return; }
+    const ta=el("textarea"); ta.rows=2; ta.placeholder="寫回覆，會公開回在這則留言下";
+    const q=el("div","quick"); QUICK.forEach(t=>{const b=el("button",null,t.length>14?t.slice(0,13)+"…":t); b.title=t; b.addEventListener("click",()=>{ta.value=t; ta.focus();}); q.append(b);});
+    const a=el("div","row between"), s=el("button","primary sm","送出回覆"), hd=el("button","sm quiet","不回，標記處理");
+    s.addEventListener("click",async()=>{ const t=ta.value.trim(); if(!t) return ta.focus(); if(/阿斌/.test(t)) return toast("請把「阿斌」改成聖斌"); s.disabled=true; try{ await putFile("outbox/"+c.id+".txt",t,null,"回覆留言 @"+c.username); toast("回覆送出中"); S.tree.push("outbox/"+c.id+".txt"); renderCmts(); setTimeout(()=>loadAll().catch(()=>{}),90000);}catch(e){ toast("送出失敗："+e.message); s.disabled=false; } });
+    hd.addEventListener("click",async()=>{ hd.disabled=true; try{ await putFile("handled/"+c.id+".txt","1",null,"留言已處理"); S.handled.add(c.id); render(); }catch(e){ toast("失敗："+e.message); hd.disabled=false; } });
+    a.append(s,hd); d.append(ta,q,a); l.append(d);
   });
+  v.append(l);
 }
+
+/* ---------- listings ---------- */
 function renderLst(){
   const v=$("#v-lst"); v.replaceChildren();
-  v.append(el("p","hint","物件規格從追蹤台同步過來（只有規格，沒有屋主資料與門牌）。要更新請在追蹤台按「同步物件到 Threads-Bin」。照片按「同步照片」會抓整本 Google 相簿，約 2–3 分鐘。"));
-  if(!S.listings.length){ v.append(el("div","empty","還沒有物件。請在追蹤台按「同步物件到 Threads-Bin」。")); return; }
-  S.listings.forEach(L=>{ const slug=L.code.toLowerCase(), n=(S.thumbs[slug]||[]).length, c=el("div","cmt");
-    const t=el("div","row"); t.style.justifyContent="space-between"; t.append(el("b",null,L.code+" "+(L.name||"")+(L.ask?"｜"+L.ask:"")));
-    const b=el("button","small",n?"重新同步照片":"同步照片"); const busy=S.tree.includes("sync/"+slug); if(busy){b.disabled=true; b.textContent="同步中…";}
-    b.addEventListener("click",async()=>{ if(!L.photos) return toast("這個物件沒有 Google 相簿連結"); b.disabled=true; try{ await putFile("sync/"+slug,L.photos+"\n",null,"同步照片 "+L.code); toast("開始同步，約 2–3 分鐘"); S.tree.push("sync/"+slug); setTimeout(()=>loadAll().catch(()=>{}),150000);}catch(e){ toast("失敗："+e.message); b.disabled=false; } });
-    t.append(b); c.append(t, el("div","hint",n?"照片 "+n+" 張":"還沒同步照片"));
-    const w=el("button","small primary","寫這個物件的貼文"); w.addEventListener("click",()=>openEd({listing:L.code})); c.append(w); v.append(c); });
+  const h=el("h2"); h.append("可以發的物件", el("small",null,S.listings.length+" 個")); v.append(h);
+  if(!S.listings.length){ const e=el("div","empty"); e.append(el("b",null,"還沒有物件"),"到追蹤台的「發脆」分頁按「同步物件到 Threads-Bin」。"); v.append(e); return; }
+  const l=el("div","list");
+  S.listings.forEach(L=>{ const slug=L.code.toLowerCase(), th=S.thumbs[slug]||[], c=el("div","lst");
+    const nm=el("div","nm"); nm.append(el("small",null,L.code), L.name||""); c.append(nm, el("div","pr",L.ask||""));
+    const ph=el("div","ph"); const strip=el("div","strip"); th.slice(0,8).forEach(p=>{const im=el("img"); im.src=RAW+p; im.alt=""; im.loading="lazy"; strip.append(im);});
+    const busy=S.tree.includes("sync/"+slug);
+    const b=el("button","sm",busy?"同步中…":(th.length?"重新同步照片":"同步照片")); b.disabled=busy;
+    b.addEventListener("click",async()=>{ if(!L.photos) return toast("這個物件沒有 Google 相簿連結"); b.disabled=true; try{ await putFile("sync/"+slug,L.photos+"\n",null,"同步照片 "+L.code); toast("開始同步，約 2–3 分鐘"); S.tree.push("sync/"+slug); renderLst(); setTimeout(()=>loadAll().catch(()=>{}),150000);}catch(e){ toast("失敗："+e.message); b.disabled=false; } });
+    const w=el("button","primary sm","寫貼文"); w.addEventListener("click",()=>openEd({listing:L.code}));
+    const left=el("div","row"); if(th.length){ left.append(strip, el("span",null,th.length+" 張")); } else left.append(el("span",null,"還沒同步照片"));
+    const right=el("div","row"); right.append(b,w); ph.append(left,right); c.append(ph); l.append(c); });
+  v.append(l);
+  v.append(el("p","hint","只放規格和相簿連結，沒有屋主資料與門牌。規格有變，在追蹤台再按一次同步。"));
 }
+
 /* ---------- editor ---------- */
 function parsePick(v,max){const o=[];String(v||"").replace(/，/g,",").split(",").map(x=>x.trim()).filter(Boolean).forEach(x=>{const m=x.match(/^(\d+)\s*-\s*(\d+)$/); if(m){let a=+m[1],b=+m[2],s=a<=b?1:-1; for(let i=a;s>0?i<=b:i>=b;i+=s)o.push(i);} else if(/^\d+$/.test(x)) o.push(+x);}); return [...new Set(o)].filter(n=>n>=1&&(!max||n<=max));}
-function fillListingSel(sel){ const s=$("#ed-listing"); s.replaceChildren(); const o=el("option",null,"（知識文，不綁物件）"); o.value=""; s.append(o); S.listings.forEach(L=>{const x=el("option",null,L.code+" "+(L.name||"")); x.value=L.code; s.append(x);}); if(sel&&!S.listings.some(L=>L.code===sel)){const x=el("option",null,sel+"（未同步）"); x.value=sel; s.append(x);} s.value=sel||""; }
+function fillListingSel(sel){ const s=$("#ed-listing"); s.replaceChildren(); const o=el("option",null,"知識文（不綁物件）"); o.value=""; s.append(o); S.listings.forEach(L=>{const x=el("option",null,L.code+" "+(L.name||"")); x.value=L.code; s.append(x);}); if(sel&&!S.listings.some(L=>L.code===sel)){const x=el("option",null,sel+"（未同步）"); x.value=sel; s.append(x);} s.value=sel||""; }
 function openEd(d,day){
   cur=d&&d.id?d:null; curSha=d&&d._sha||null; const init=d||{};
-  $("#ed-title").textContent=cur?"編輯貼文":"新貼文";
+  $("#ed-title").textContent=cur?(init.status==="已發布"?"已發布的貼文":"編輯貼文"):"新貼文";
   fillListingSel(init.listing||"");
   $("#ed-text").value=init.text||""; $("#ed-reply").value=init.reply!=null?init.reply:(init.listing?DEF_REPLY:KNOW_REPLY); $("#ed-pick").value=init.pick||"";
   $("#ed-at").value=init.scheduledAt?toLocal(init.scheduledAt):(day?day+"T12:30":"");
   const lock=["待發","處理中","已發布"].includes(init.status);
   ["#ed-listing","#ed-text","#ed-reply","#ed-pick","#ed-save","#ed-sched","#ed-send","#ed-at","#ed-spec","#ed-sign"].forEach(x=>$(x).disabled=lock);
   $("#ed-del").hidden=!cur||init.status==="處理中"||init.status==="待發";
-  $("#ed-msg").textContent=init.status==="已發布"?"已發布："+(init.permalink||""):init.status==="已排程"?"已排程 "+fmt(init.scheduledAt)+"，可以直接改內容或時間再按排程。":init.status==="失敗"?"上次失敗："+(init.error||""):lock?"發送中，請稍候。":"";
-  if(init.permalink){ $("#ed-msg").replaceChildren("已發布：",Object.assign(el("a",null,"看貼文"),{href:init.permalink,target:"_blank",rel:"noopener"})); }
-  edPhotos(); edChecks(); $("#dlg").showModal();
+  $("#ed-del").textContent=init.status==="已發布"?"從清單移除":"刪除";
+  const m=$("#ed-msg"); m.className="msg"; m.replaceChildren();
+  if(init.permalink){ m.append("已發布 "+fmt(init.postedAt)+"　"); const a=el("a",null,"在 Threads 打開"); a.href=init.permalink; a.target="_blank"; a.rel="noopener"; m.append(a); }
+  else if(init.status==="已排程") m.textContent="排程 "+fmt(init.scheduledAt)+"。改內容或時間後再按一次「排程」就會更新。";
+  else if(init.status==="失敗"){ m.textContent="上次沒發出去："+(init.error||""); m.className="msg err"; }
+  else if(lock) m.textContent="發送中，等結果回來。";
+  edPhotos(); edChecks(); $("#dlg").showModal(); $("#dlg").scrollTop=0;
 }
 function edPhotos(){
   const code=$("#ed-listing").value, slug=code.toLowerCase(), th=S.thumbs[slug]||[], g=$("#ed-grid"); g.replaceChildren();
-  $("#ed-photos").hidden=!code; $("#ed-pick").closest(".field").hidden=!code;
+  $("#ed-photos").hidden=!code; $("#ed-pickf").hidden=!code;
   if(!code) return;
-  if(!th.length){ $("#ed-pnote").textContent="這個物件還沒同步照片：到「物件」分頁按同步照片；或直接在上面打編號（照 Google 相簿順序）。"; return; }
+  if(!th.length){ $("#ed-pnote").textContent="還沒同步照片：到「物件」按同步照片，或先在下面打編號（照 Google 相簿順序）。"; return; }
   const sel=parsePick($("#ed-pick").value,th.length), lock=$("#ed-pick").disabled;
   th.forEach((p,i)=>{ const n=i+1,k=sel.indexOf(n),b=el("button","pth"+(k>=0?" on":"")); b.type="button"; b.disabled=lock; const im=el("img"); im.src=RAW+p; im.loading="lazy"; im.alt="第"+n+"張"; b.append(im); if(k>=0) b.append(el("span","n",String(k+1))); b.append(el("span","ix","#"+n));
     b.addEventListener("click",()=>{ const c=parsePick($("#ed-pick").value,th.length), j=c.indexOf(n); j>=0?c.splice(j,1):c.push(n); $("#ed-pick").value=c.join(","); edPhotos(); edChecks(); }); g.append(b); });
-  $("#ed-pnote").textContent=sel.length?"已選 "+sel.length+" 張"+(sel.length>20?"（最多 20 張，只會發前 20 張）":""):"還沒選：會用相簿前 "+Math.min(20,th.length)+" 張";
+  $("#ed-pnote").textContent=sel.length?"已選 "+sel.length+" 張"+(sel.length>20?"，只會發前 20 張":""):"還沒選，會用相簿前 "+Math.min(20,th.length)+" 張";
 }
 function edChecks(){
   const t=$("#ed-text").value, r=$("#ed-reply").value, code=$("#ed-listing").value, L=lst(code), out=[], add=(a,b)=>out.push([a,b]);
   if(!t.trim()) add("bad","主文是空的");
   t.length>500?add("bad","主文 "+t.length+" 字，超過 500"):add("ok","主文 "+t.length+" 字");
   if(r.length>500) add("bad","留言超過 500 字");
-  (/台灣房屋/.test(t)&&/尚峰不動產/.test(t))?add("ok","有標示經紀業"):add("bad","缺經紀業標示（台灣房屋／尚峰不動產）→ 按「插入署名」");
-  /蘇聖斌/.test(t)?add("ok","有署名蘇聖斌"):add("bad","沒有署名「蘇聖斌」");
+  (/台灣房屋/.test(t)&&/尚峰不動產/.test(t))?add("ok","有經紀業標示"):add("bad","缺經紀業標示 → 按「只插入署名」");
+  /蘇聖斌/.test(t)?add("ok","有署名"):add("bad","沒有署名「蘇聖斌」");
   (/林建宏/.test(t)&&/00667/.test(t)&&/416424/.test(t))?add("ok","有證號"):add("bad","缺經紀人、營業員證號");
-  /阿斌/.test(t+r)?add("bad","出現「阿斌」，一律用聖斌／蘇聖斌"):null;
-  /(^|\s)@\w/.test(t)?add("bad","有「@帳號」寫法，會變成標記別人"):null;
+  /阿斌/.test(t+r)?add("bad","出現「阿斌」，一律用聖斌"):null;
+  /(^|\s)@\w/.test(t)?add("bad","「@帳號」會變成標記別人"):null;
   const m=t.match(INTERNAL); m?add("bad","有內部用語「"+m[0]+"」"):add("ok","沒有內部用語");
   /\d+\s*號|\d+\s*樓之\s*\d+|\d+\s*巷|巷\s*\d|\d+\s*弄/.test(t)?add("bad","出現門牌細節，只寫到路名"):add("ok","沒有完整門牌");
-  if(L&&L.askWan){ const nums=[...t.replace(/,/g,"").matchAll(/(\d+(?:\.\d+)?)\s*萬/g)].map(x=>parseFloat(x[1])); nums.includes(L.askWan)?add("ok","售價和庫存一致（"+L.ask+"）"):add("bad","主文沒有寫到售價 "+L.ask+"（或數字不一樣）"); }
-  if(code&&!L) add("warn","這個物件還沒同步物件到 Threads-Bin（照片抓不到）");
+  if(L&&L.askWan){ const nums=[...t.replace(/,/g,"").matchAll(/(\d+(?:\.\d+)?)\s*萬/g)].map(x=>parseFloat(x[1])); nums.includes(L.askWan)?add("ok","售價和庫存一致"):add("bad","主文沒寫到售價 "+L.ask+"，或數字不同"); }
+  if(code&&!L) add("warn","物件還沒同步到 Threads-Bin，抓不到照片");
   /line\.me\/R\/ti\/p\/@a0888/.test(r)?add("ok","留言有官方 LINE"):add("warn","留言沒有官方 LINE 連結");
-  /line\.me|https?:\/\//.test(t)?add("warn","主文有連結，可能降低曝光；放留言比較好"):null;
-  if(code){ const last=S.drafts.filter(d=>d.listing===code&&d.status==="已發布"&&(!cur||d.id!==cur.id)).map(d=>d.postedAt).sort().pop(); if(last&&Date.now()-new Date(last).getTime()<72*3600e3) add("warn","這個物件 3 天內發過，系統會擋（避免洗版）"); }
+  /line\.me|https?:\/\//.test(t)?add("warn","主文有連結，可能降低曝光"):null;
+  if(code){ const last=S.drafts.filter(d=>d.listing===code&&d.status==="已發布"&&(!cur||d.id!==cur.id)).map(d=>d.postedAt).sort().pop(); if(last&&Date.now()-new Date(last).getTime()<72*3600e3) add("warn","這個物件 3 天內發過，系統會擋"); }
   const ul=$("#ed-checks"); ul.replaceChildren(); out.forEach(([a,b])=>ul.append(el("li",a,(a==="ok"?"✓ ":a==="bad"?"✗ ":"⚠ ")+b)));
+  const nb=out.filter(x=>x[0]==="bad").length, nw=out.filter(x=>x[0]==="warn").length;
+  const sum=$("#ed-chksum"); sum.replaceChildren(); sum.append(el("span","st "+(nb?"s-失敗":nw?"s-已排程":"s-已發布"),nb?nb+" 項要改":nw?"可以發，"+nw+" 項提醒":"檢查通過")); $("#ed-chk").open=nb>0;
   const c=$("#ed-count"); c.textContent=t.length+" / 500"; c.classList.toggle("over",t.length>500);
   return out;
 }
@@ -345,22 +498,23 @@ async function saveDraft(status,extra){
   const now=new Date().toISOString(), id=cur?cur.id:newId(), path="drafts/"+id+".json";
   const base=cur?Object.fromEntries(Object.entries(cur).filter(([k])=>!k.startsWith("_"))):{id,createdAt:now,source:"panel"};
   const d=Object.assign(base,{listing:$("#ed-listing").value,text:$("#ed-text").value.trim(),reply:$("#ed-reply").value.trim(),pick:$("#ed-pick").value.trim(),status,updatedAt:now,error:""},extra||{});
-  if(status!=="已排程") d.scheduledAt=d.scheduledAt&&status==="草稿"?d.scheduledAt:"";
-  $("#ed-msg").textContent="儲存中…";
+  if(status!=="已排程") d.scheduledAt="";
+  const m=$("#ed-msg"); m.className="msg"; m.textContent="儲存中…";
   try{ const r=await putJSON(path,d,curSha,(status==="待發"?"立即發送 ":status==="已排程"?"排程 ":"草稿 ")+id); d._sha=r&&r.content&&r.content.sha; d._path=path; const i=S.drafts.findIndex(x=>x.id===id); i>=0?S.drafts[i]=d:S.drafts.push(d); $("#dlg").close(); render(); return true; }
-  catch(e){ $("#ed-msg").textContent="沒存成功："+e.message; $("#ed-msg").className="msg err"; return false; }
+  catch(e){ m.textContent="沒存成功："+e.message; m.className="msg err"; return false; }
 }
-$("#ed-save").addEventListener("click",()=>saveDraft(cur&&cur.status==="已排程"?"草稿":"草稿"));
-$("#ed-send").addEventListener("click",async()=>{ const bad=edChecks().filter(x=>x[0]==="bad"); if(bad.length){ $("#ed-msg").textContent="還有 "+bad.length+" 項紅色 ✗ 沒通過"; return; } if(await saveDraft("待發")){ toast("已送出，約 1–3 分鐘發布"); setTimeout(()=>loadAll().catch(()=>{}),45000); } });
-$("#ed-sched").addEventListener("click",async()=>{ const bad=edChecks().filter(x=>x[0]==="bad"); if(bad.length){ $("#ed-msg").textContent="還有 "+bad.length+" 項紅色 ✗ 沒通過"; return; } const v=$("#ed-at").value; if(!v){ $("#ed-msg").textContent="先選排程時間"; return $("#ed-at").focus(); } const iso=v+":00+08:00"; if(new Date(iso).getTime()<Date.now()+5*60e3){ $("#ed-msg").textContent="排程時間要在 5 分鐘以後"; return; } if(await saveDraft("已排程",{scheduledAt:iso})) toast("已排程 "+fmt(iso)+"（每 15 分鐘檢查，可能晚一點點）"); });
-$("#ed-del").addEventListener("click",async()=>{ const b=$("#ed-del"); if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="確定刪除？再按一次"; return; } delete b.dataset.armed; b.textContent="刪除"; if(!cur) return; try{ const f=await getFile(cur._path||"drafts/"+cur.id+".json"); if(f) await delFile(cur._path||"drafts/"+cur.id+".json",f.sha); S.drafts=S.drafts.filter(x=>x.id!==cur.id); $("#dlg").close(); render(); toast(cur.status==="已發布"?"已從 Threads-Bin 移除（Threads 上的貼文不會被刪）":"已刪除"); }catch(e){ $("#ed-msg").textContent="刪除失敗："+e.message; } });
-$("#dlg").addEventListener("close",()=>{ const b=$("#ed-del"); delete b.dataset.armed; b.textContent="刪除"; });
+const bads=()=>edChecks().filter(x=>x[0]==="bad").length;
+$("#ed-save").addEventListener("click",async()=>{ if(await saveDraft("草稿")) toast("已存成草稿"); });
+$("#ed-send").addEventListener("click",async()=>{ const n=bads(); if(n){ $("#ed-chk").open=true; $("#ed-msg").textContent="還有 "+n+" 項要改（紅色 ✗）"; $("#ed-msg").className="msg err"; return; } if(await saveDraft("待發")){ toast("已送出，約 1–3 分鐘發布"); setTimeout(()=>loadAll().catch(()=>{}),45000); } });
+$("#ed-sched").addEventListener("click",async()=>{ const n=bads(); if(n){ $("#ed-chk").open=true; $("#ed-msg").textContent="還有 "+n+" 項要改（紅色 ✗）"; $("#ed-msg").className="msg err"; return; } const v=$("#ed-at").value; if(!v){ $("#ed-msg").textContent="先選排程時間"; return $("#ed-at").focus(); } const iso=v+":00+08:00"; if(new Date(iso).getTime()<Date.now()+5*60e3){ $("#ed-msg").textContent="排程時間要在 5 分鐘以後"; $("#ed-msg").className="msg err"; return; } if(await saveDraft("已排程",{scheduledAt:iso})) toast("已排程 "+fmt(iso)); });
+$("#ed-del").addEventListener("click",async()=>{ const b=$("#ed-del"); if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="確定？再按一次"; return; } delete b.dataset.armed; if(!cur) return; try{ const f=await getFile(cur._path||"drafts/"+cur.id+".json"); if(f) await delFile(cur._path||"drafts/"+cur.id+".json",f.sha); S.drafts=S.drafts.filter(x=>x.id!==cur.id); $("#dlg").close(); render(); toast(cur.status==="已發布"?"已從清單移除，Threads 上的貼文還在":"已刪除"); }catch(e){ $("#ed-msg").textContent="刪除失敗："+e.message; $("#ed-msg").className="msg err"; } });
+$("#dlg").addEventListener("close",()=>{ const b=$("#ed-del"); delete b.dataset.armed; });
 $("#btn-new").addEventListener("click",()=>openEd(null));
 $("#btn-refresh").addEventListener("click",()=>loadAll().catch(e=>toast("讀取失敗："+e.message)));
-$("#btn-pat").addEventListener("click",async()=>{ PAT=$("#pat").value.trim(); if(!PAT) return; $("#pat-msg").textContent="連線中…"; try{ const r=await gh(""); if(!r) throw new Error("找不到 threads-poster（鑰匙沒有勾這個儲存庫）"); if(!(r.permissions&&r.permissions.push)) throw new Error("鑰匙沒有寫入權限（Contents 要選 Read and write）"); store.set("fct_pat",PAT); $("#pat").value=""; start(); }catch(e){ $("#pat-msg").textContent="連線失敗："+e.message; } });
+$("#btn-pat").addEventListener("click",async()=>{ PAT=$("#pat").value.trim(); if(!PAT) return; $("#pat-msg").textContent="連線中…"; try{ const r=await gh(""); if(!r) throw new Error("找不到 threads-poster，鑰匙沒有勾這個儲存庫"); if(!(r.permissions&&r.permissions.push)) throw new Error("鑰匙沒有寫入權限，Contents 要選 Read and write"); store.set("fct_pat",PAT); $("#pat").value=""; start(); }catch(e){ $("#pat-msg").textContent="連不上："+e.message; } });
 function start(){ $("#setup").hidden=true; $("#app").hidden=false; loadAll().catch(e=>{ if(e.status===401){ store.del("fct_pat"); PAT=""; $("#app").hidden=true; $("#setup").hidden=false; $("#pat-msg").textContent="鑰匙失效或過期，請重新貼一把。"; } else toast("讀取失敗："+e.message); }); }
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&PAT) loadAll().catch(()=>{}); });
-if(PAT) start(); else { $("#setup").hidden=false; }
+if(PAT) start(); else $("#setup").hidden=false;
 </script>
 </body>
 </html>
