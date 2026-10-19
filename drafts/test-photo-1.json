@@ -7,11 +7,13 @@
  "pick": "3,1",
  "topic": "測試",
  "source": "test",
- "dry": true,
+ "dry": false,
  "createdAt": "2026-10-19T23:00:00+08:00",
  "updatedAt": "2026-10-19T23:00:00+08:00",
- "status": "處理中",
+ "status": "草稿",
  "scheduledAt": null,
  "error": "",
- "queuedAt": "2026-10-19T22:45:59+08:00"
+ "queuedAt": "2026-10-19T22:45:59+08:00",
+ "dryOkAt": "2026-10-19T22:46:19+08:00",
+ "dryPhotos": 2
 }
