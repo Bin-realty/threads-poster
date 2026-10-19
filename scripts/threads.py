@@ -390,7 +390,10 @@ REDIRECT = "https://bin-realty.github.io/threads/"
 
 def cmd_oauth():
     """用授權碼換長效鑰匙（授權頁明確勾選全部權限，含刪文）"""
-    code = os.environ.get("OAUTH_CODE", "").strip().split("#")[0]
+    raw = os.environ.get("OAUTH_CODE", "").strip()
+    if "code=" in raw:  # 貼整個網址也可以
+        raw = urllib.parse.parse_qs(urllib.parse.urlparse(raw if "://" in raw else "https://x/" + raw.split("?", 1)[-1] if "?" in raw else "https://x/?" + raw).query).get("code", [""])[0]
+    code = raw.split("#")[0].strip()
     if not code:
         sys.exit("缺少授權碼")
     r = call("POST", f"{GRAPH}/oauth/access_token", {

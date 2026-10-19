@@ -12,7 +12,7 @@ on:
         type: choice
         options: [check, refresh, reseed, scopes, oauth]
       code:
-        description: "oauth 用的授權碼"
+        description: "oauth：貼上授權後的整個網址（或只貼授權碼）"
         required: false
 
 permissions:
