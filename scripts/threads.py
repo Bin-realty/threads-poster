@@ -242,6 +242,11 @@ def post_listing(slug, token, mode, tid=None):
 
     if mode == "dry":
         log(f"✅ 試跑成功：{slug} 所有照片與文字都通過 Threads 檢查（未發布）")
+        if tid:
+            f = d / "dryrun.json"
+            h = json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
+            h.append({"at": datetime.now(TZ).isoformat(timespec="seconds"), "tracker_id": tid, "photos": len(photos)})
+            f.write_text(json.dumps(h[-20:], ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         return None
 
     pub = call("POST", f"{API}/me/threads_publish", {"creation_id": container, "access_token": token})

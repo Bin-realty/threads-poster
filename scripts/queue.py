@@ -81,7 +81,7 @@ def cmd_queue():
             album = (dd / "album.txt").read_text(encoding="utf-8").strip()
         if album:
             (dd / "album.txt").write_text(album + "\n", encoding="utf-8")
-        mode = "force" if d.get("force") else "post"
+        mode = "dry" if d.get("dry") else ("force" if d.get("force") else "post")
         (PUBLISH / slug).write_text(f"{mode} {d['id']}\n", encoding="utf-8")
         d.update(status="處理中", error="", queuedAt=now().isoformat(timespec="seconds"))
         save(f, d)
@@ -97,7 +97,10 @@ def cmd_settle():
         dd = LISTINGS / slug_of(d)
         ok = next((e for e in reversed(load(dd / "posted.json", []) or []) if e.get("tracker_id") == d["id"]), None)
         bad = next((e for e in reversed(load(dd / "failed.json", []) or []) if e.get("tracker_id") == d["id"]), None)
-        if ok:
+        dry = next((e for e in reversed(load(dd / "dryrun.json", []) or []) if e.get("tracker_id") == d["id"]), None) if d.get("dry") else None
+        if dry:
+            d.update(status="草稿", dry=False, error="", dryOkAt=dry.get("at"), dryPhotos=dry.get("photos"))
+        elif ok:
             d.update(status="已發布", permalink=ok.get("permalink", ""), post_id=ok.get("post_id"), postedAt=ok.get("posted_at"), error="")
         elif bad:
             d.update(status="失敗", error=bad.get("error", "")[:200])
