@@ -11,6 +11,7 @@
   - 續期後的新鑰匙用 GitHub Secret「THREADS_APP_SECRET」加密，存成 token.enc
 """
 import json
+import re
 import os
 import subprocess
 import sys
@@ -391,8 +392,9 @@ REDIRECT = "https://bin-realty.github.io/threads/"
 def cmd_oauth():
     """用授權碼換長效鑰匙（授權頁明確勾選全部權限，含刪文）"""
     raw = os.environ.get("OAUTH_CODE", "").strip()
-    if "code=" in raw:  # 貼整個網址也可以
-        raw = urllib.parse.parse_qs(urllib.parse.urlparse(raw if "://" in raw else "https://x/" + raw.split("?", 1)[-1] if "?" in raw else "https://x/?" + raw).query).get("code", [""])[0]
+    m = re.search(r"code=([^&#\s]+)", raw)  # 貼整個網址也可以
+    if m:
+        raw = urllib.parse.unquote(m.group(1))
     code = raw.split("#")[0].strip()
     if not code:
         sys.exit("缺少授權碼")
