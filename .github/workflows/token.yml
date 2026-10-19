@@ -10,7 +10,7 @@ on:
         required: true
         default: check
         type: choice
-        options: [check, refresh, reseed]
+        options: [check, refresh, reseed, scopes]
 
 permissions:
   contents: write
@@ -34,6 +34,7 @@ jobs:
           ACTION="${{ inputs.action }}"
           case "$ACTION" in
             check) python3 scripts/threads.py check ;;
+            scopes) python3 scripts/threads.py scopes ;;
             *)     python3 scripts/threads.py refresh && python3 scripts/threads.py check ;;
           esac
       - name: 儲存加密鑰匙

@@ -384,6 +384,32 @@ def cmd_refresh():
     write_summary(f"## 鑰匙續期\n✅ 已續期，約 {days} 天後到期（系統每週自動續期）")
 
 
+def cmd_scopes():
+    """檢查鑰匙實際有哪些權限（不發文、不刪文）"""
+    token, _ = load_token()
+    tests = [
+        ("threads_basic", "GET", f"{API}/me", {"fields": "id,username"}),
+        ("threads_read_replies", "GET", f"{API}/me/replies", {"fields": "id", "limit": "1"}),
+        ("threads_manage_insights", "GET", f"{API}/me/threads_insights", {"metric": "views"}),
+    ]
+    lines = []
+    for name, m, url, p in tests:
+        try:
+            call(m, url, dict(p, access_token=token), retries=1)
+            lines.append(f"- {name}：✅")
+        except RuntimeError as e:
+            lines.append(f"- {name}：❌ {str(e)[:160]}")
+    try:
+        r = call("GET", "https://graph.threads.net/v1.0/debug_token", {"input_token": token, "access_token": token}, retries=1)
+        sc = (r.get("data") or {}).get("scopes")
+        lines.append(f"- debug_token scopes：{sc}")
+    except RuntimeError as e:
+        lines.append(f"- debug_token：{str(e)[:120]}")
+    for l in lines:
+        log(l)
+    write_summary("## 權限檢查\n" + "\n".join(lines))
+
+
 def cmd_check():
     token, source = load_token()
     me = call("GET", f"{API}/me", {"fields": "username", "access_token": token})
@@ -403,5 +429,5 @@ def write_summary(md):
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "delete": cmd_delete}.get(
+    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "delete": cmd_delete, "scopes": cmd_scopes}.get(
         cmd, lambda: sys.exit(__doc__))()
