@@ -3,7 +3,7 @@ name: 發文 Post to Threads
 on:
   push:
     branches: [main]
-    paths: ["publish/**"]
+    paths: ["publish/**", "delete/**"]
   workflow_dispatch:
     inputs:
       listing:
@@ -47,12 +47,14 @@ jobs:
         env:
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
-        run: python3 scripts/threads.py process
+        run: |
+          python3 scripts/threads.py delete
+          python3 scripts/threads.py process
       - name: 儲存發文紀錄
         if: always()
         run: |
           git config user.name "threads-bot"
           git config user.email "threads-bot@users.noreply.github.com"
-          git add -A listings publish
+          git add -A listings publish delete
           git diff --cached --quiet || git commit -m "發文紀錄 $(TZ=Asia/Taipei date '+%F %R')"
           git pull --rebase -q && git push -q

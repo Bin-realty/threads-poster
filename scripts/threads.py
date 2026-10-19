@@ -80,7 +80,7 @@ def save_token(token, expires_in):
 def call(method, url, params=None, retries=3):
     params = dict(params or {})
     data = None
-    if method == "GET":
+    if method in ("GET", "DELETE"):
         url = url + "?" + urllib.parse.urlencode(params)
     else:
         data = urllib.parse.urlencode(params).encode()
@@ -324,6 +324,44 @@ def cmd_process():
         sys.exit(1)
 
 
+def cmd_delete():
+    """刪文：delete/<slug> 檔案內每行一個 post_id（物件成交／下架時由追蹤台排入）"""
+    ddir = ROOT / "delete"
+    jobs = sorted(p for p in ddir.glob("*") if p.is_file() and not p.name.startswith(".")) if ddir.exists() else []
+    if not jobs:
+        log("delete/ 沒有待刪的貼文")
+        return
+    token, _ = load_token()
+    summary, failed = [], False
+    for job in jobs:
+        slug = job.stem
+        for pid in [x.strip() for x in job.read_text(encoding="utf-8").split() if x.strip()]:
+            try:
+                call("DELETE", f"{API}/{pid}", {"access_token": token})
+                ok = f"已刪除 {pid}"
+            except RuntimeError as e:
+                if "does not exist" in str(e) or "Unsupported delete" in str(e) or "(#100)" in str(e):
+                    ok = f"{pid} 已不存在（可能已手動刪除）"
+                else:
+                    failed = True
+                    summary.append(f"- {slug}：❌ {pid} {e}")
+                    log(f"❌ {slug} {pid}：{e}")
+                    continue
+            log(f"✅ {slug}：{ok}")
+            summary.append(f"- {slug}：{ok}")
+            hist_f = LISTINGS / slug / "posted.json"
+            if hist_f.exists():
+                hist = json.loads(hist_f.read_text(encoding="utf-8"))
+                for h in hist:
+                    if h.get("post_id") == pid and not h.get("deleted"):
+                        h["deleted"] = datetime.now(TZ).isoformat(timespec="seconds") + " 自動刪文（成交／下架）"
+                hist_f.write_text(json.dumps(hist, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        job.unlink()
+    write_summary("## 刪文結果\n" + "\n".join(summary))
+    if failed:
+        sys.exit(1)
+
+
 def cmd_refresh():
     token, source = load_token()
     if source == "secret":
@@ -365,5 +403,5 @@ def write_summary(md):
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import}.get(
+    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "delete": cmd_delete}.get(
         cmd, lambda: sys.exit(__doc__))()
