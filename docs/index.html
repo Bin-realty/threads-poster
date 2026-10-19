@@ -279,13 +279,10 @@ details.chk[open] summary{margin-bottom:8px}
 <dialog id="dlg">
   <div class="ed">
     <div class="row between"><h2 id="ed-title">貼文</h2><button class="sm quiet" id="ed-cancel">關閉</button></div>
-    <div class="row">
-      <label class="field" style="flex:1;min-width:160px"><span>物件</span><select id="ed-listing"></select></label>
-      <label class="field" style="flex:1;min-width:140px"><span>招式（開頭的寫法）</span><select id="ed-hook"></select></label>
-    </div>
-    <div class="row"><button class="sm" id="ed-spec">插入規格＋署名</button><button class="sm" id="ed-sign">只插入署名</button></div>
-    <label class="field"><span>主文</span><textarea id="ed-text" rows="12" placeholder="可以在追蹤台用 AI 寫好送過來，或直接在這裡寫"></textarea><span class="cnt" id="ed-count">0 / 500</span></label>
+    <label class="field"><span>主文（直接打字，或從追蹤台送過來）</span><textarea id="ed-text" rows="12" placeholder="想說什麼就打在這裡"></textarea><span class="cnt" id="ed-count">0 / 500</span></label>
+    <div class="row"><button class="sm" id="ed-sign">加上署名</button><button class="sm" id="ed-spec">加上物件規格＋署名</button></div>
     <label class="field"><span>發文後自動補的第一則留言</span><textarea id="ed-reply" rows="2"></textarea></label>
+    <label class="field"><span>照片要用哪個物件的？（純文字貼文就選「不用」）</span><select id="ed-listing"></select></label>
     <div id="ed-photos" class="field">
       <div class="row between"><span>照片：先點的是封面，最多 20 張</span><button class="sm quiet" id="ed-pclear">全部取消</button></div>
       <div class="pgrid" id="ed-grid"></div>
@@ -297,7 +294,7 @@ details.chk[open] summary{margin-bottom:8px}
   </div>
   <div class="foot">
     <div class="main"><button class="primary" id="ed-send">立即發送</button><button id="ed-save">存草稿</button></div>
-    <div class="sched"><input type="datetime-local" id="ed-at" aria-label="排程時間"><button id="ed-sched">排程</button></div>
+    <div class="sched"><span class="hint" style="white-space:nowrap">排程時間</span><input type="datetime-local" id="ed-at" aria-label="排程時間"><button id="ed-sched">排程</button></div>
     <div class="aux"><button class="sm danger quiet" id="ed-del">刪除</button><button class="sm danger" id="ed-unpub" hidden>從 Threads 刪除這篇</button><a class="sm" id="ed-open" hidden target="_blank" rel="noopener" style="font-size:14px">在 Threads 打開 ↗</a></div>
   </div>
 </dialog>
@@ -385,7 +382,7 @@ function card(d,opts){
   const w=whenOf(d); if(w&&d.status!=="草稿"){ l1.append(el("time",null,fmt(w))); }
   l1.append(el("b",null,label(d)));
   b.append(l1, el("div","txt",firstLine(d)));
-  const m=[]; const s=statOf(d); if(s) m.push("👁 "+s.views+"　❤️ "+s.likes+"　💬 "+s.replies); if(d.hook) m.push("招式："+d.hook); if(d.source==="tracker") m.push("來自追蹤台"); if(d.source==="rotation") m.push("輪播");
+  const m=[]; const s=statOf(d); if(s) m.push("👁 "+s.views+"　❤️ "+s.likes+"　💬 "+s.replies); if(d.source==="tracker") m.push("來自追蹤台"); if(d.source==="rotation") m.push("輪播");
   const mm=el("div","m"); m.forEach(x=>mm.append(el("span",null,x))); if(d.error) mm.append(el("span","err",d.error)); if(mm.childNodes.length) b.append(mm);
   c.append(b);
   c.addEventListener("click",()=>{ if(opts.sel){ bulkSel.has(d.id)?bulkSel.delete(d.id):bulkSel.add(d.id); renderPosts(); } else openEd(d); });
@@ -455,7 +452,7 @@ function renderPlan(){
   const pl=el("div","picklist"); sp.append(pl);
   const pv=el("div","preview");
   const drawPreview=()=>{ pv.replaceChildren(); const plan=planAssign(); if(!plan.length){ pv.append(el("span",null,"還沒勾貼文")); return; } plan.slice(0,8).forEach(x=>{ const s=el("span"); s.append(el("b",null,md(x.t)+" "+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,18)); pv.append(s); }); if(plan.length>8) pv.append(el("span",null,"…共 "+plan.length+" 篇")); };
-  const drawPick=()=>{ pl.replaceChildren(); const q=srch.value.trim(); cands.filter(d=>!q||(label(d)+firstLine(d)).includes(q)).slice(0,120).forEach(d=>{ const r=el("div","pick"+(planSel.has(d.id)?" on":"")); const cb=el("input"); cb.type="checkbox"; cb.checked=planSel.has(d.id); const u=coverOf(d); let im; if(u){ im=el("img"); im.src=u; im.alt=""; im.loading="lazy"; } else im=el("div","k",d.listing?"宅":"知"); const t=el("div","t"); t.append(firstLine(d), el("small",null,label(d)+(d.library?"・文案庫":d.status==="已發布"?"・已發過，會再發一次":"")+(d.hook?"・"+d.hook:""))); r.append(cb,im,t); r.addEventListener("click",()=>{ planSel.has(d.id)?planSel.delete(d.id):planSel.add(d.id); drawPick(); drawPreview(); }); pl.append(r); }); };
+  const drawPick=()=>{ pl.replaceChildren(); const q=srch.value.trim(); cands.filter(d=>!q||(label(d)+firstLine(d)).includes(q)).slice(0,120).forEach(d=>{ const r=el("div","pick"+(planSel.has(d.id)?" on":"")); const cb=el("input"); cb.type="checkbox"; cb.checked=planSel.has(d.id); const u=coverOf(d); let im; if(u){ im=el("img"); im.src=u; im.alt=""; im.loading="lazy"; } else im=el("div","k",d.listing?"宅":"知"); const t=el("div","t"); t.append(firstLine(d), el("small",null,label(d)+(d.library?"・文案庫":d.status==="已發布"?"・已發過，會再發一次":""))); r.append(cb,im,t); r.addEventListener("click",()=>{ planSel.has(d.id)?planSel.delete(d.id):planSel.add(d.id); drawPick(); drawPreview(); }); pl.append(r); }); };
   srch.addEventListener("input",drawPick); drawPick(); sp.append(pv); drawPreview();
   const go=el("button","primary","排進去"); go.addEventListener("click",async()=>{ const plan=planAssign(); if(!plan.length) return toast("先勾貼文"); if(!planTimes.length) return toast("先加一個時間"); go.disabled=true; let n=0; for(const x of plan){ try{ await scheduleCopy(x.d,x.t); n++; }catch(e){ toast("有一篇沒排成功："+e.message); } } planSel.clear(); toast("已排 "+n+" 篇"); await loadAll().catch(()=>{}); go.disabled=false; });
   sp.append(go); v.append(sp);
@@ -527,14 +524,6 @@ function renderStats(){
   const V=items.reduce((a,x)=>a+(x.s.views||0),0), E=items.reduce((a,x)=>a+eng(x.s),0);
   const h=el("h2"); h.append("成效", el("small",null,"更新 "+fmt(S.stats.updated_at)+"・每天 6:23")); v.append(h);
   const k=el("div","kpis"); [["總觀看",V],["平均每篇",Math.round(V/items.length)],["互動率",V?(Math.round(E/V*1000)/10)+"%":"–"],["已追蹤篇數",items.length]].forEach(([a,b])=>{const c=el("div","kpi"); c.append(el("b",null,String(b)),el("span",null,a)); k.append(c);}); v.append(k);
-  const rows=hookRank(items);
-  const hh=el("h2"); hh.append("鉤子排行", el("small",null,"開頭寫法的成效，分數＝觀看 ×（1＋20×互動率）")); v.append(hh);
-  const rp=el("div","panel rank");
-  rows.forEach((r,i)=>{ const row=el("div","rk"); row.append(el("div","n",String(i+1))); const bw=el("div","bw"); const t=el("div","t"); const nm=el("span"); nm.style.cssText="font:500 14px var(--f);color:var(--fg)"; nm.textContent=r.k; t.append(nm, el("span",null,r.n+" 篇・平均 👁 "+r.avgV+"・分數 "+r.avgS)); bw.append(t); const b=el("div","b"+(r.status==="淘汰"?" dim":"")); b.style.width=Math.round(r.avgS/Math.max(rows[0].avgS,1)*100)+"%"; bw.append(b); row.append(bw, el("span","hs "+r.status,r.status)); rp.append(row); });
-  const hk=S.hooks.filter(x=>!rows.some(r=>r.k===x.name));
-  if(hk.length) rp.append(el("p","hint","還沒試過的招式："+hk.map(x=>x.name).join("、")+"。寫文案時試一試，才知道哪種對你的客群有效。"));
-  rp.append(el("p","hint","主力＝分數高於中位數 1.3 倍；淘汰＝發過 3 篇以上還低於中位數一半；測試中＝不到 2 篇。追蹤台的 AI 寫文案會優先用主力招式。"));
-  v.append(rp);
   const lh=el("h2"); lh.append("每篇觀看", el("small",null,"依發文順序")); v.append(lh);
   const lc=el("div","chart"); const pts=items.slice(-20).map(x=>({v:x.s.views||0,x:md(tpe(x.s.posted_at)),l:fmt(x.s.posted_at)+" "+(x.d?label(x.d):"")})); const sv=lineChart(pts); if(sv) lc.append(sv); else lc.append(el("p","hint","至少要 2 篇才會畫線。目前 "+pts.length+" 篇。")); v.append(lc);
   const sl={}; items.forEach(x=>{ const t=tpe(x.s.posted_at); if(!t) return; let hh2=t.getUTCHours(); if(hh2<6) hh2+=24; const s=SLOTS.find(y=>hh2>=y[1]&&hh2<y[2]); if(!s) return; const y=sl[s[0]]||(sl[s[0]]={n:0,v:0}); y.n++; y.v+=x.s.views||0; });
@@ -544,8 +533,8 @@ function renderStats(){
   const trows=Object.entries(ty).map(([k,y])=>({k,n:y.n,avg:Math.round(y.v/y.n)}));
   if(trows.length>1){ const th=el("h2"); th.append("物件文 vs 知識文"); v.append(th); const tc=el("div","chart"); tc.append(barChart(trows,r=>r.k,r=>r.avg,r=>r.avg+"（"+r.n+" 篇）")); v.append(tc); }
   const h2=el("h2"); h2.append("每篇明細"); v.append(h2);
-  const w=el("div","tbl"), t=el("table"), thd=el("thead"), tr0=el("tr"); ["貼文","招式","👁","❤️","💬","🔁","分數"].forEach(x=>tr0.append(el("th",null,x))); thd.append(tr0); t.append(thd); const tb=el("tbody");
-  items.slice().reverse().forEach(x=>{ const s=x.s, tr=el("tr"), td=el("td"); const a=el("a",null,fmt(s.posted_at)+" "+(x.d?label(x.d):String(s.slug).toUpperCase())); a.href=s.permalink||"#"; a.target="_blank"; a.rel="noopener"; td.append(a); tr.append(td, el("td",null,(x.d&&x.d.hook)||"–")); [s.views,s.likes,s.replies,s.reposts].forEach(n=>tr.append(el("td","n",String(n||0)))); tr.append(el("td","n",String(score(s)))); tb.append(tr); });
+  const w=el("div","tbl"), t=el("table"), thd=el("thead"), tr0=el("tr"); ["貼文","👁","❤️","💬","🔁","分數"].forEach(x=>tr0.append(el("th",null,x))); thd.append(tr0); t.append(thd); const tb=el("tbody");
+  items.slice().reverse().forEach(x=>{ const s=x.s, tr=el("tr"), td=el("td"); const a=el("a",null,fmt(s.posted_at)+" "+(x.d?label(x.d)+"・"+firstLine(x.d).slice(0,16):String(s.slug).toUpperCase())); a.href=s.permalink||"#"; a.target="_blank"; a.rel="noopener"; td.append(a); tr.append(td); [s.views,s.likes,s.replies,s.reposts].forEach(n=>tr.append(el("td","n",String(n||0)))); tr.append(el("td","n",String(score(s)))); tb.append(tr); });
   t.append(tb); w.append(t); v.append(w);
 }
 
@@ -623,24 +612,22 @@ upIn.addEventListener("change",async()=>{
 
 /* ---------- editor ---------- */
 function parsePick(v,max){const o=[];String(v||"").replace(/，/g,",").split(",").map(x=>x.trim()).filter(Boolean).forEach(x=>{const m=x.match(/^(\d+)\s*-\s*(\d+)$/); if(m){let a=+m[1],b=+m[2],s=a<=b?1:-1; for(let i=a;s>0?i<=b:i>=b;i+=s)o.push(i);} else if(/^\d+$/.test(x)) o.push(+x);}); return [...new Set(o)].filter(n=>n>=1&&(!max||n<=max));}
-function fillListingSel(sel){ const s=$("#ed-listing"); s.replaceChildren(); const o=el("option",null,"知識文（不綁物件）"); o.value=""; s.append(o); S.listings.forEach(L=>{const x=el("option",null,L.code+" "+(L.name||"")); x.value=L.code; s.append(x);}); if(sel&&!S.listings.some(L=>L.code===sel)){const x=el("option",null,sel+"（未同步）"); x.value=sel; s.append(x);} s.value=sel||""; }
-function fillHookSel(sel){ const s=$("#ed-hook"); s.replaceChildren(); const o=el("option",null,"（沒標）"); o.value=""; s.append(o); const names=S.hooks.map(h=>h.name); if(sel&&!names.includes(sel)) names.unshift(sel); names.forEach(n=>{ const h=S.hooks.find(x=>x.name===n); const x=el("option",null,n+(h?"：「"+h.example.slice(0,14)+"…」":"")); x.value=n; s.append(x); }); s.value=sel||""; }
+function fillListingSel(sel){ const s=$("#ed-listing"); s.replaceChildren(); const o=el("option",null,"不用，純文字貼文"); o.value=""; s.append(o); S.listings.forEach(L=>{const x=el("option",null,L.code+" "+(L.name||"")); x.value=L.code; s.append(x);}); if(sel&&!S.listings.some(L=>L.code===sel)){const x=el("option",null,sel+"（未同步）"); x.value=sel; s.append(x);} s.value=sel||""; }
 function openEd(d,day){
   cur=d&&d.id?d:null; curSha=d&&d._sha||null; const init=d||{};
   $("#ed-title").textContent=cur?(init.status==="已發布"?"已發布的貼文":init.status==="已刪除"?"已從 Threads 刪除":"編輯貼文"):"新貼文";
-  fillListingSel(init.listing||""); fillHookSel(init.hook||"");
+  fillListingSel(init.listing||"");
   $("#ed-text").value=init.text||""; $("#ed-reply").value=init.reply!=null?init.reply:(init.listing?DEF_REPLY:KNOW_REPLY); $("#ed-pick").value=init.pick||"";
   $("#ed-at").value=init.scheduledAt?toLocal(init.scheduledAt):(day?day+"T12:30":"");
   const lock=["待發","處理中","已發布","刪除中","已刪除"].includes(init.status);
   ["#ed-listing","#ed-text","#ed-reply","#ed-pick","#ed-save","#ed-sched","#ed-send","#ed-at","#ed-spec","#ed-sign"].forEach(x=>$(x).disabled=lock);
-  $("#ed-hook").disabled=["待發","處理中","刪除中"].includes(init.status);
   $("#ed-del").hidden=!cur||["處理中","待發","刪除中"].includes(init.status);
   $("#ed-del").textContent=["已發布","已刪除"].includes(init.status)?"從清單移除":"刪除";
   document.querySelector(".foot .main").hidden=lock; document.querySelector(".foot .sched").hidden=lock;
   const op=$("#ed-open"); op.hidden=!init.permalink||init.status==="已刪除"; if(init.permalink) op.href=init.permalink;
   $("#ed-unpub").hidden=init.status!=="已發布";
   const m=$("#ed-msg"); m.className="msg"; m.replaceChildren();
-  if(init.status==="已發布") m.textContent="已發布 "+fmt(init.postedAt)+"。要換內容：先「從 Threads 刪除」再重發；要再發一次：到「排程」勾它。改招式會直接存。";
+  if(init.status==="已發布") m.textContent="已發布 "+fmt(init.postedAt)+"。要換內容：先「從 Threads 刪除」再重發；要再發一次：到「排程」勾它。";
   else if(init.status==="已刪除") m.textContent="已從 Threads 刪除。";
   else if(init.status==="刪除中") m.textContent="刪除中，約 1–3 分鐘。";
   else if(init.status==="已排程") m.textContent="排程 "+fmt(init.scheduledAt)+"。改內容或時間後再按一次「排程」就會更新。";
@@ -674,7 +661,6 @@ function edChecks(){
   if(code&&!L) add("warn","物件還沒同步到 Threads-Bin，抓不到照片");
   /line\.me\/R\/ti\/p\/@a0888/.test(r)?add("ok","留言有官方 LINE"):add("warn","留言沒有官方 LINE 連結");
   /line\.me|https?:\/\//.test(t)?add("warn","主文有連結，可能降低曝光"):null;
-  if(!$("#ed-hook").value) add("warn","沒標招式，數據頁就算不到這篇的鉤子成效");
   if(code){ const last=S.drafts.filter(d=>d.listing===code&&d.status==="已發布"&&(!cur||d.id!==cur.id)).map(d=>d.postedAt).sort().pop(); if(last&&Date.now()-new Date(last).getTime()<72*3600e3) add("warn","這個物件 3 天內發過，系統會擋"); }
   const ul=$("#ed-checks"); ul.replaceChildren(); out.forEach(([a,b])=>ul.append(el("li",a,(a==="ok"?"✓ ":a==="bad"?"✗ ":"⚠ ")+b)));
   const nb=out.filter(x=>x[0]==="bad").length, nw=out.filter(x=>x[0]==="warn").length;
@@ -683,7 +669,6 @@ function edChecks(){
   return out;
 }
 ["#ed-text","#ed-reply","#ed-pick"].forEach(x=>$(x).addEventListener("input",()=>{edChecks(); if(x==="#ed-pick") edPhotos();}));
-$("#ed-hook").addEventListener("change",async()=>{ edChecks(); if(cur&&["已發布","已排程","失敗","草稿"].includes(cur.status)&&$("#ed-text").disabled){ try{ const body=Object.fromEntries(Object.entries(cur).filter(([k])=>!k.startsWith("_"))); body.hook=$("#ed-hook").value; const r=await putJSON(cur._path,body,cur._sha,"標招式 "+cur.id); Object.assign(cur,body,{_sha:r&&r.content&&r.content.sha}); toast("招式已存"); }catch(e){ toast("沒存成功："+e.message); } } });
 $("#ed-listing").addEventListener("change",()=>{ const r=$("#ed-reply"); if(!r.value.trim()||r.value===DEF_REPLY||r.value===KNOW_REPLY) r.value=$("#ed-listing").value?DEF_REPLY:KNOW_REPLY; $("#ed-pick").value=""; edPhotos(); edChecks(); });
 function stripSign(t){ return t.replace(/\n*━{5,}[\s\S]*$/,"").replace(/\n*蘇聖斌 0958[\s\S]*$/,"").trimEnd(); }
 $("#ed-spec").addEventListener("click",()=>{ const L=lst($("#ed-listing").value); const body=stripSign($("#ed-text").value); $("#ed-text").value=body+(L&&L.spec?"\n\n━━━━━━━━━━━━━━━\n"+L.spec:"")+"\n\n"+SIGN; if(!L) toast("知識文沒有規格，只插入署名"); edChecks(); });
@@ -693,7 +678,7 @@ $("#ed-cancel").addEventListener("click",()=>$("#dlg").close());
 async function saveDraft(status,extra){
   const now=new Date().toISOString(), id=cur?cur.id:newId(), path="drafts/"+id+".json";
   const base=cur?Object.fromEntries(Object.entries(cur).filter(([k])=>!k.startsWith("_"))):{id,createdAt:now,source:"panel"};
-  const d=Object.assign(base,{listing:$("#ed-listing").value,hook:$("#ed-hook").value,text:$("#ed-text").value.trim(),reply:$("#ed-reply").value.trim(),pick:$("#ed-pick").value.trim(),status,updatedAt:now,error:""},extra||{});
+  const d=Object.assign(base,{listing:$("#ed-listing").value,text:$("#ed-text").value.trim(),reply:$("#ed-reply").value.trim(),pick:$("#ed-pick").value.trim(),status,updatedAt:now,error:""},extra||{});
   if(status!=="已排程") d.scheduledAt="";
   if(status!=="草稿") d.library=false;
   const m=$("#ed-msg"); m.className="msg"; m.textContent="儲存中…";
