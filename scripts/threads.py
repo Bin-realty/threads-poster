@@ -119,7 +119,7 @@ def wait_ready(cid, token, timeout=300):
 
 # ---------- 發文 ----------
 def raw_url(rel_path):
-    sha = os.environ.get("GITHUB_SHA", "main")
+    sha = os.environ.get("PHOTO_SHA") or os.environ.get("GITHUB_SHA", "main")
     return f"https://raw.githubusercontent.com/{REPO}/{sha}/" + urllib.parse.quote(rel_path)
 
 
@@ -233,6 +233,73 @@ def post_listing(slug, token, mode):
     return link
 
 
+# ---------- 從 Google 相簿匯入照片 ----------
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
+
+
+def fetch(url, timeout=60):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept-Language": "zh-TW"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read(), r.headers.get("Content-Type", "")
+
+
+def album_photo_urls(link):
+    import re
+    html, _ = fetch(link)
+    html = html.decode("utf-8", errors="replace")
+    seen, out = set(), []
+    for m in re.finditer(r"https://lh3\.googleusercontent\.com/pw/[A-Za-z0-9_\-]+", html):
+        u = m.group(0)
+        if u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+
+def parse_pick(text, n):
+    picks = []
+    for part in text.replace("，", ",").replace(" ", ",").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            a, b = part.split("-", 1)
+            picks += list(range(int(a), int(b) + 1))
+        else:
+            picks.append(int(part))
+    return [i for i in picks if 1 <= i <= n]
+
+
+def cmd_import():
+    """發文前：有 album.txt、還沒有 photos/ 的物件，先從 Google 相簿下載照片"""
+    changed = False
+    for job in sorted(PUBLISH.glob("*")):
+        if not job.is_file() or job.name.startswith("."):
+            continue
+        d = LISTINGS / job.stem
+        album = d / "album.txt"
+        photos = d / "photos"
+        if not album.exists() or (photos.is_dir() and any(photos.iterdir())):
+            continue
+        link = album.read_text(encoding="utf-8").strip().split()[0]
+        urls = album_photo_urls(link)
+        if not urls:
+            raise SystemExit(f"{job.stem}：相簿裡找不到照片（連結失效或相簿未公開分享）")
+        pick_f = d / "pick.txt"
+        order = parse_pick(pick_f.read_text(encoding="utf-8"), len(urls)) if pick_f.exists() else list(range(1, len(urls) + 1))
+        order = order[:MAX_CAROUSEL]
+        photos.mkdir(parents=True, exist_ok=True)
+        for n, i in enumerate(order, 1):
+            data, ctype = fetch(urls[i - 1] + "=w2048-h2048-rj")
+            if not data.startswith(b"\xff\xd8"):
+                raise SystemExit(f"{job.stem}：第 {i} 張下載到的不是 JPEG（{ctype}）")
+            (photos / f"{n:02d}.jpg").write_bytes(data)
+        log(f"✅ {job.stem}：相簿共 {len(urls)} 張，已下載 {len(order)} 張")
+        changed = True
+    if not changed:
+        log("沒有需要從相簿匯入的照片")
+
+
 def cmd_process():
     jobs = sorted(p for p in PUBLISH.glob("*") if p.is_file() and not p.name.startswith("."))
     if not jobs:
@@ -298,5 +365,5 @@ def write_summary(md):
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check}.get(
+    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import}.get(
         cmd, lambda: sys.exit(__doc__))()
