@@ -13,6 +13,8 @@ listings/<英文代號>/
   post.txt      主文（500 字內）
   reply.txt     發文後自動補的第一則留言（可省略）
   photos/       照片 01.jpg、02.jpg…（依檔名排序，最多 20 張，第一張是封面）
+  album.txt     （可代替 photos/）Google 相簿分享連結，發文前自動下載原圖
+  pick.txt      （可省略）要用相簿的第幾張，例：3,1,5-12（照這個順序，第一個是封面）
   posted.json   發文紀錄（系統自動產生）
 ```
 
