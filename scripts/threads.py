@@ -409,6 +409,51 @@ def cmd_oauth():
     write_summary("## 授權\n✅ 新鑰匙已保存（含刪文權限）")
 
 
+def cmd_cleanup():
+    """清理貼文。CLEAN_MODE=list（只列出）或 delete；規則：沒有別人留言的刪除＋內文含 CLEAN_KEYWORD 的一律刪。
+    為保護隱私，報告只寫日期、編號與留言數，不寫內文。"""
+    mode = os.environ.get("CLEAN_MODE", "list")
+    kw = [k for k in os.environ.get("CLEAN_KEYWORD", "").replace("，", ",").split(",") if k.strip()]
+    token, _ = load_token()
+    me = call("GET", f"{API}/me", {"fields": "id,username", "access_token": token})
+    myname = me.get("username")
+    posts, url, params = [], f"{API}/me/threads", {"fields": "id,timestamp,text,media_type,is_quote_post", "limit": "100", "access_token": token}
+    while url:
+        r = call("GET", url, params)
+        posts += r.get("data", [])
+        url = (r.get("paging") or {}).get("next")
+        params = {}
+    rows, todo = [], []
+    for p in posts:
+        if p.get("media_type") == "REPOST_FACADE":
+            continue
+        try:
+            rep = call("GET", f"{API}/{p['id']}/replies", {"fields": "id,username", "limit": "100", "access_token": token})
+            others = [x for x in rep.get("data", []) if x.get("username") != myname]
+        except RuntimeError:
+            others = None
+        hit = any(k.strip() in (p.get("text") or "") for k in kw)
+        n = "?" if others is None else len(others)
+        delete = hit or (others is not None and len(others) == 0)
+        why = "關鍵字" if hit else ("無他人留言" if delete else "保留")
+        rows.append(f"| {str(p.get('timestamp',''))[:10]} | {p['id']} | {n} | {why} |")
+        if delete:
+            todo.append(p["id"])
+    head = f"## 貼文清理（{mode}）\n共 {len(rows)} 篇，符合刪除條件 {len(todo)} 篇，保留 {len(rows)-len(todo)} 篇\n\n| 日期 | 編號 | 他人留言數 | 判斷 |\n|---|---|---|---|\n"
+    done = 0
+    if mode == "delete":
+        for pid in todo:
+            try:
+                call("DELETE", f"{API}/{pid}", {"access_token": token}, retries=1)
+                done += 1
+                time.sleep(1)
+            except RuntimeError as e:
+                log(f"❌ {pid}：{str(e)[:120]}")
+        head += f"\n**實際刪除 {done} / {len(todo)} 篇**\n\n"
+    log(head)
+    write_summary(head + "\n".join(rows))
+
+
 def cmd_scopes():
     """檢查鑰匙實際有哪些權限（不發文、不刪文）"""
     token, _ = load_token()
@@ -454,5 +499,5 @@ def write_summary(md):
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "delete": cmd_delete, "scopes": cmd_scopes, "oauth": cmd_oauth}.get(
+    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "delete": cmd_delete, "scopes": cmd_scopes, "oauth": cmd_oauth, "cleanup": cmd_cleanup}.get(
         cmd, lambda: sys.exit(__doc__))()

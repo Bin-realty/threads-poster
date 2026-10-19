@@ -10,7 +10,7 @@ on:
         required: true
         default: check
         type: choice
-        options: [check, refresh, reseed, scopes, oauth]
+        options: [check, refresh, reseed, scopes, oauth, cleanup-list, cleanup-delete]
       code:
         description: "oauth：貼上授權後的整個網址（或只貼授權碼）"
         required: false
@@ -34,12 +34,15 @@ jobs:
           THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
           RESEED: ${{ inputs.action == 'reseed' && '1' || '0' }}
           OAUTH_CODE: ${{ inputs.code }}
+          CLEAN_KEYWORD: ${{ inputs.code }}
         run: |
           ACTION="${{ inputs.action }}"
           case "$ACTION" in
             check) python3 scripts/threads.py check ;;
             scopes) python3 scripts/threads.py scopes ;;
             oauth)  python3 scripts/threads.py oauth && python3 scripts/threads.py scopes ;;
+            cleanup-list)   CLEAN_MODE=list python3 scripts/threads.py cleanup ;;
+            cleanup-delete) CLEAN_MODE=delete python3 scripts/threads.py cleanup ;;
             *)     python3 scripts/threads.py refresh && python3 scripts/threads.py check ;;
           esac
       - name: 儲存加密鑰匙
