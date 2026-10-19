@@ -384,6 +384,26 @@ def cmd_refresh():
     write_summary(f"## 鑰匙續期\n✅ 已續期，約 {days} 天後到期（系統每週自動續期）")
 
 
+APP_ID = "1776980380267124"
+REDIRECT = "https://bin-realty.github.io/threads/"
+
+
+def cmd_oauth():
+    """用授權碼換長效鑰匙（授權頁明確勾選全部權限，含刪文）"""
+    code = os.environ.get("OAUTH_CODE", "").strip().split("#")[0]
+    if not code:
+        sys.exit("缺少授權碼")
+    r = call("POST", f"{GRAPH}/oauth/access_token", {
+        "client_id": APP_ID, "client_secret": _key(), "code": code,
+        "grant_type": "authorization_code", "redirect_uri": REDIRECT}, retries=1)
+    short = r["access_token"]
+    r2 = call("GET", f"{GRAPH}/access_token", {
+        "grant_type": "th_exchange_token", "client_secret": _key(), "access_token": short}, retries=1)
+    save_token(r2["access_token"], r2.get("expires_in", 5184000))
+    log("✅ 已用授權碼換到新的長效鑰匙並加密保存")
+    write_summary("## 授權\n✅ 新鑰匙已保存（含刪文權限）")
+
+
 def cmd_scopes():
     """檢查鑰匙實際有哪些權限（不發文、不刪文）"""
     token, _ = load_token()
@@ -429,5 +449,5 @@ def write_summary(md):
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "delete": cmd_delete, "scopes": cmd_scopes}.get(
+    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "delete": cmd_delete, "scopes": cmd_scopes, "oauth": cmd_oauth}.get(
         cmd, lambda: sys.exit(__doc__))()

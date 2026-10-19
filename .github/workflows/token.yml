@@ -10,7 +10,10 @@ on:
         required: true
         default: check
         type: choice
-        options: [check, refresh, reseed, scopes]
+        options: [check, refresh, reseed, scopes, oauth]
+      code:
+        description: "oauth 用的授權碼"
+        required: false
 
 permissions:
   contents: write
@@ -30,11 +33,13 @@ jobs:
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
           RESEED: ${{ inputs.action == 'reseed' && '1' || '0' }}
+          OAUTH_CODE: ${{ inputs.code }}
         run: |
           ACTION="${{ inputs.action }}"
           case "$ACTION" in
             check) python3 scripts/threads.py check ;;
             scopes) python3 scripts/threads.py scopes ;;
+            oauth)  python3 scripts/threads.py oauth && python3 scripts/threads.py scopes ;;
             *)     python3 scripts/threads.py refresh && python3 scripts/threads.py check ;;
           esac
       - name: 儲存加密鑰匙
