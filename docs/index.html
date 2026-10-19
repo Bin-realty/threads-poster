@@ -114,9 +114,10 @@ details.lib summary h2::after{content:"展開";font:500 12px var(--f);color:var(
 details.lib[open] summary h2::after{content:"收起"}
 
 /* planner */
+@media (max-width:640px){.cal button.d{height:auto;aspect-ratio:1;min-height:44px}}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cal .wd{font:500 12px var(--mono);color:var(--muted);text-align:center;padding:2px 0 4px}
-.cal button.d{aspect-ratio:1;min-height:44px;border-radius:10px;padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--bg);border-color:transparent;font-size:14px}
+.cal button.d{height:58px;border-radius:10px;padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--bg);border-color:transparent;font-size:14px}
 .cal button.d.out{opacity:.35}
 .cal button.d.now{font-weight:700;border-color:var(--fg)}
 .cal button.d.pick{background:var(--fg);color:var(--bg)}
