@@ -53,7 +53,7 @@ nav.tabs button small{font:500 12px var(--mono)}
 nav.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
 @media (max-width:640px){
   nav.tabs{position:fixed;left:0;right:0;bottom:0;top:auto;margin:0;border-radius:0;border-width:1px 0 0;padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:20}
-  nav.tabs button{flex-direction:column;gap:2px;padding:6px 2px;font-size:12px;font-weight:500}
+  nav.tabs button{gap:4px;padding:10px 2px;font-size:14px;font-weight:500;align-items:center}
   nav.tabs button[aria-selected="true"]{font-weight:700}
   .top h1{font-size:22px}
 }
@@ -243,7 +243,7 @@ details.chk[open] summary{margin-bottom:8px}
   <div class="foot">
     <div class="main"><button class="primary" id="ed-send">立即發送</button><button id="ed-save">存草稿</button></div>
     <div class="sched"><input type="datetime-local" id="ed-at" aria-label="排程時間"><button id="ed-sched">排程</button></div>
-    <div class="aux"><button class="sm danger quiet" id="ed-del">刪除</button></div>
+    <div class="aux"><button class="sm danger quiet" id="ed-del">刪除</button><a class="sm" id="ed-open" hidden target="_blank" rel="noopener" style="font-size:14px;align-self:center">在 Threads 打開 ↗</a></div>
   </div>
 </dialog>
 <div id="toast" hidden role="status"></div>
@@ -447,6 +447,8 @@ function openEd(d,day){
   ["#ed-listing","#ed-text","#ed-reply","#ed-pick","#ed-save","#ed-sched","#ed-send","#ed-at","#ed-spec","#ed-sign"].forEach(x=>$(x).disabled=lock);
   $("#ed-del").hidden=!cur||init.status==="處理中"||init.status==="待發";
   $("#ed-del").textContent=init.status==="已發布"?"從清單移除":"刪除";
+  document.querySelector(".foot .main").hidden=lock; document.querySelector(".foot .sched").hidden=lock;
+  const op=$("#ed-open"); op.hidden=!init.permalink; if(init.permalink) op.href=init.permalink;
   const m=$("#ed-msg"); m.className="msg"; m.replaceChildren();
   if(init.permalink){ m.append("已發布 "+fmt(init.postedAt)+"　"); const a=el("a",null,"在 Threads 打開"); a.href=init.permalink; a.target="_blank"; a.rel="noopener"; m.append(a); }
   else if(init.status==="已排程") m.textContent="排程 "+fmt(init.scheduledAt)+"。改內容或時間後再按一次「排程」就會更新。";
