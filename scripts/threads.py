@@ -28,6 +28,7 @@ TOKEN_ENC = ROOT / "token.enc"
 TOKEN_META = ROOT / "token_meta.json"
 LISTINGS = ROOT / "listings"
 PUBLISH = ROOT / "publish"
+SYNC = ROOT / "sync"
 REPO = os.environ.get("GITHUB_REPOSITORY", "Bin-realty/threads-poster")
 TZ = timezone(timedelta(hours=8))
 MAX_TEXT = 500
@@ -170,7 +171,35 @@ def recent_post(d):
     return None
 
 
-def post_listing(slug, token, mode):
+def parse_job(job):
+    """publish/<slug> 內容：<mode> [排程時間ISO] [追蹤台貼文ID]"""
+    parts = (job.read_text(encoding="utf-8").strip() or "post").split()
+    mode = parts[0].lower()
+    at = tid = None
+    for x in parts[1:]:
+        if re.match(r"^\d{4}-\d{2}-\d{2}T", x):
+            at = datetime.fromisoformat(x.replace("Z", "+00:00"))
+            if at.tzinfo is None:
+                at = at.replace(tzinfo=TZ)
+        else:
+            tid = x
+    return mode, at, tid
+
+
+def is_due(at):
+    return at is None or at <= datetime.now(TZ) + timedelta(minutes=2)
+
+
+def record_failure(slug, tid, err):
+    d = LISTINGS / slug
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / "failed.json"
+    hist = json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
+    hist.append({"at": datetime.now(TZ).isoformat(timespec="seconds"), "tracker_id": tid, "error": str(err)[:300]})
+    f.write_text(json.dumps(hist, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def post_listing(slug, token, mode, tid=None):
     d, text, reply, photos = listing_files(slug)
     validate(slug, text, reply, photos)
     log(f"{slug}：主文 {len(text)} 字、照片 {len(photos)} 張、留言 {'有' if reply else '無'}，模式 {mode}")
@@ -229,7 +258,7 @@ def post_listing(slug, token, mode):
     hist = json.loads(hist_f.read_text(encoding="utf-8")) if hist_f.exists() else []
     hist.append({"posted_at": datetime.now(TZ).isoformat(timespec="seconds"),
                  "post_id": post_id, "reply_id": reply_id, "permalink": link,
-                 "photos": len(photos)})
+                 "photos": len(photos), "tracker_id": tid})
     hist_f.write_text(json.dumps(hist, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return link
 
@@ -283,42 +312,102 @@ def cmd_import():
         if not album.exists() or (photos.is_dir() and any(photos.iterdir())):
             continue
         link = album.read_text(encoding="utf-8").strip().split()[0]
-        urls = album_photo_urls(link)
-        if not urls:
-            raise SystemExit(f"{job.stem}：相簿裡找不到照片（連結失效或相簿未公開分享）")
         pick_f = d / "pick.txt"
-        order = parse_pick(pick_f.read_text(encoding="utf-8"), len(urls)) if pick_f.exists() else list(range(1, len(urls) + 1))
-        order = order[:MAX_CAROUSEL]
+        meta_f = d / "album_meta.json"
+        meta = json.loads(meta_f.read_text(encoding="utf-8")) if meta_f.exists() else {}
+        saved = sorted((d / "album").glob("*.jpg")) if (d / "album").is_dir() else []
         photos.mkdir(parents=True, exist_ok=True)
-        for n, i in enumerate(order, 1):
-            data, ctype = fetch(urls[i - 1] + "=w2048-h2048-rj")
-            if not data.startswith(b"\xff\xd8"):
-                raise SystemExit(f"{job.stem}：第 {i} 張下載到的不是 JPEG（{ctype}）")
-            (photos / f"{n:02d}.jpg").write_bytes(data)
-        log(f"✅ {job.stem}：相簿共 {len(urls)} 張，已下載 {len(order)} 張")
+        if saved and meta.get("link") == link:
+            # 用「同步照片」存下來的相簿，編號和追蹤台縮圖一致
+            order = parse_pick(pick_f.read_text(encoding="utf-8"), len(saved)) if pick_f.exists() else list(range(1, len(saved) + 1))
+            order = order[:MAX_CAROUSEL]
+            for n, i in enumerate(order, 1):
+                (photos / f"{n:02d}.jpg").write_bytes(saved[i - 1].read_bytes())
+            log(f"✅ {job.stem}：用已同步相簿（{len(saved)} 張，{meta.get('synced_at','')}），選 {len(order)} 張")
+        else:
+            urls = album_photo_urls(link)
+            if not urls:
+                raise SystemExit(f"{job.stem}：相簿裡找不到照片（連結失效或相簿未公開分享）")
+            order = parse_pick(pick_f.read_text(encoding="utf-8"), len(urls)) if pick_f.exists() else list(range(1, len(urls) + 1))
+            order = order[:MAX_CAROUSEL]
+            for n, i in enumerate(order, 1):
+                data, ctype = fetch(urls[i - 1] + "=w2048-h2048-rj")
+                if not data.startswith(b"\xff\xd8"):
+                    raise SystemExit(f"{job.stem}：第 {i} 張下載到的不是 JPEG（{ctype}）")
+                (photos / f"{n:02d}.jpg").write_bytes(data)
+            log(f"✅ {job.stem}：相簿共 {len(urls)} 張，已下載 {len(order)} 張")
         changed = True
     if not changed:
         log("沒有需要從相簿匯入的照片")
 
 
+def cmd_sync():
+    """同步照片：sync/<slug> 內容是 Google 相簿連結 → 整本相簿存到 listings/<slug>/album/，縮圖存到 thumbs/"""
+    from PIL import Image, ImageOps
+    import io
+    jobs = sorted(p for p in SYNC.glob("*") if p.is_file() and not p.name.startswith("."))
+    if not jobs:
+        log("sync/ 沒有同步指令")
+        return
+    summary = []
+    for job in jobs:
+        slug = job.stem
+        d = LISTINGS / slug
+        try:
+            link = job.read_text(encoding="utf-8").strip().split()[0]
+            urls = album_photo_urls(link)
+            if not urls:
+                raise RuntimeError("相簿裡找不到照片（連結失效或相簿未公開分享）")
+            for sub in ("album", "thumbs"):
+                (d / sub).mkdir(parents=True, exist_ok=True)
+                for old in (d / sub).glob("*"):
+                    old.unlink()
+            for i, u in enumerate(urls, 1):
+                data, ctype = fetch(u + "=w2048-h2048-rj")
+                if not data.startswith(b"\xff\xd8"):
+                    raise RuntimeError(f"第 {i} 張下載到的不是 JPEG（{ctype}）")
+                (d / "album" / f"{i:02d}.jpg").write_bytes(data)
+                im = ImageOps.fit(ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB"), (240, 240))
+                im.save(d / "thumbs" / f"{i:02d}.jpg", quality=78)
+            (d / "album.txt").write_text(link + "\n", encoding="utf-8")
+            (d / "album_meta.json").write_text(json.dumps({"link": link, "count": len(urls),
+                "synced_at": datetime.now(TZ).isoformat(timespec="seconds")}, ensure_ascii=False) + "\n", encoding="utf-8")
+            summary.append(f"- {slug}：✅ 同步 {len(urls)} 張")
+            log(f"✅ {slug}：同步 {len(urls)} 張")
+        except Exception as e:
+            (d).mkdir(parents=True, exist_ok=True)
+            (d / "sync_error.txt").write_text(f"{datetime.now(TZ).isoformat(timespec='seconds')} {e}\n", encoding="utf-8")
+            summary.append(f"- {slug}：❌ {e}")
+            log(f"❌ {slug}：{e}")
+        job.unlink()
+    write_summary("## 同步照片\n" + "\n".join(summary))
+
+
 def cmd_process():
     jobs = sorted(p for p in PUBLISH.glob("*") if p.is_file() and not p.name.startswith("."))
-    if not jobs:
-        log("publish/ 沒有待發的指令")
+    due = []
+    for job in jobs:
+        mode, at, tid = parse_job(job)
+        if is_due(at):
+            due.append((job, mode, tid))
+        else:
+            log(f"⏰ {job.stem}：排程 {at.astimezone(TZ):%m/%d %H:%M}，時間未到")
+    if not due:
+        log("publish/ 沒有到期的發文指令")
         return
     token, _ = load_token()
     summary, failed = [], False
-    for job in jobs:
+    for job, mode, tid in due:
         slug = job.stem
-        mode = (job.read_text(encoding="utf-8").strip().lower() or "post").split()[0]
         try:
-            link = post_listing(slug, token, mode)
+            link = post_listing(slug, token, mode, tid)
             summary.append(f"- {slug}：" + ("試跑通過" if mode == "dry" else f"已發布 {link}"))
             job.unlink()
         except Exception as e:
             failed = True
             summary.append(f"- {slug}：❌ {e}")
             log(f"❌ {slug}：{e}")
+            record_failure(slug, tid, e)
             job.unlink()
     write_summary("## 發文結果\n" + "\n".join(summary))
     if failed:
@@ -499,5 +588,5 @@ def write_summary(md):
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "delete": cmd_delete, "scopes": cmd_scopes, "oauth": cmd_oauth, "cleanup": cmd_cleanup}.get(
+    {"process": cmd_process, "refresh": cmd_refresh, "check": cmd_check, "import": cmd_import, "sync": cmd_sync, "delete": cmd_delete, "scopes": cmd_scopes, "oauth": cmd_oauth, "cleanup": cmd_cleanup}.get(
         cmd, lambda: sys.exit(__doc__))()

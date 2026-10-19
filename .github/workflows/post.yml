@@ -3,7 +3,9 @@ name: 發文 Post to Threads
 on:
   push:
     branches: [main]
-    paths: ["publish/**", "delete/**"]
+    paths: ["publish/**", "delete/**", "sync/**"]
+  schedule:
+    - cron: "*/15 * * * *"   # 每 15 分鐘檢查排程貼文是否到期
   workflow_dispatch:
     inputs:
       listing:
@@ -32,12 +34,13 @@ jobs:
       - name: 建立手動指令
         if: github.event_name == 'workflow_dispatch'
         run: echo "${{ inputs.mode }}" > "publish/${{ inputs.listing }}"
-      - name: 從 Google 相簿匯入照片
+      - name: 同步照片＋從 Google 相簿匯入照片
         run: |
+          if ls sync/* >/dev/null 2>&1; then pip install -q pillow; python3 scripts/threads.py sync; fi
           python3 scripts/threads.py import
           git config user.name "threads-bot"
           git config user.email "threads-bot@users.noreply.github.com"
-          git add -A listings
+          git add -A listings sync
           if ! git diff --cached --quiet; then
             git commit -q -m "匯入相簿照片 $(TZ=Asia/Taipei date '+%F %R')"
             git pull --rebase -q && git push -q
@@ -55,6 +58,6 @@ jobs:
         run: |
           git config user.name "threads-bot"
           git config user.email "threads-bot@users.noreply.github.com"
-          git add -A listings publish delete
+          git add -A listings publish delete sync
           git diff --cached --quiet || git commit -m "發文紀錄 $(TZ=Asia/Taipei date '+%F %R')"
           git pull --rebase -q && git push -q

@@ -23,7 +23,7 @@ def main(posts_dir, listings_dir):
     out = []
     for f in sorted(Path(posts_dir).glob("**/*.json")):
         post = load(f)
-        if post.get("status") != "待發":
+        if post.get("status") not in ("待發", "已排程"):
             continue
         code = post["listing"]
         lf = next(Path(listings_dir).glob(f"**/{code}.json"), None)
@@ -49,8 +49,10 @@ def main(posts_dir, listings_dir):
         pk = d / "pick.txt"
         pick = (post.get("pick") or "").strip()
         pk.write_text(pick + "\n", encoding="utf-8") if pick else (pk.unlink() if pk.exists() else None)
-        (ROOT / "publish" / slug).write_text("post\n", encoding="utf-8")
-        out.append({"post": f.stem, "listing": code, "slug": slug})
+        at = (post.get("scheduledAt") or "").strip() if post.get("status") == "已排程" else ""
+        pid = f.stem
+        (ROOT / "publish" / slug).write_text(" ".join(x for x in ("post", at, pid) if x) + "\n", encoding="utf-8")
+        out.append({"post": pid, "listing": code, "slug": slug, "at": at})
     print(json.dumps(out, ensure_ascii=False))
 
 
