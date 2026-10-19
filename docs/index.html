@@ -427,14 +427,39 @@ function renderLst(){
     const busy=S.tree.includes("sync/"+slug);
     const b=el("button","sm",busy?"同步中…":(th.length?"重新同步照片":"同步照片")); b.disabled=busy;
     b.addEventListener("click",async()=>{ if(!L.photos) return toast("這個物件沒有 Google 相簿連結"); b.disabled=true; try{ await putFile("sync/"+slug,L.photos+"\n",null,"同步照片 "+L.code); toast("開始同步，約 2–3 分鐘"); S.tree.push("sync/"+slug); renderLst(); setTimeout(()=>loadAll().catch(()=>{}),150000);}catch(e){ toast("失敗："+e.message); b.disabled=false; } });
+    const up=el("button","sm","上傳照片"); up.addEventListener("click",()=>pickUpload(L,slug));
     const w=el("button","primary sm","寫貼文"); w.addEventListener("click",()=>openEd({listing:L.code}));
-    const left=el("div","row"); if(th.length){ left.append(strip, el("span",null,th.length+" 張")); } else left.append(el("span",null,"還沒同步照片"));
-    const right=el("div","row"); right.append(b,w); ph.append(left,right); c.append(ph); l.append(c); });
+    const left=el("div","row"); if(th.length){ left.append(strip, el("span",null,th.length+" 張")); } else left.append(el("span",null,"還沒有照片"));
+    const right=el("div","row"); right.append(up); if(L.photos) right.append(b); right.append(w); ph.append(left,right); c.append(ph); l.append(c); });
   v.append(l);
-  v.append(el("p","hint","只放規格和相簿連結，沒有屋主資料與門牌。規格有變，在追蹤台再按一次同步。"));
+  v.append(el("p","hint","照片兩種來源：「上傳照片」從手機或電腦直接選；「同步照片」抓整本 Google 相簿（會蓋掉上傳的）。規格有變，在追蹤台再按一次同步。"));
 }
 
 /* ---------- editor ---------- */
+/* ---------- upload ---------- */
+const upIn=document.createElement("input"); upIn.type="file"; upIn.accept="image/*"; upIn.multiple=true; upIn.hidden=true; document.body.append(upIn);
+let upTarget=null;
+function pickUpload(L,slug){ upTarget={L,slug}; upIn.value=""; upIn.click(); }
+async function decode(file){ try{ return await createImageBitmap(file,{imageOrientation:"from-image"}); }catch(e){ return await new Promise((res,rej)=>{ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>{URL.revokeObjectURL(u); res(im);}; im.onerror=()=>{URL.revokeObjectURL(u); rej(new Error("無法讀取"));}; im.src=u; }); } }
+function toJpeg(img,maxW,maxH,q,square){ const w=img.width,h=img.height; let cw,ch,sx=0,sy=0,sw=w,sh=h; if(square){ const m=Math.min(w,h); sx=(w-m)/2; sy=(h-m)/2; sw=sh=m; cw=ch=maxW; } else { const r=Math.min(1,maxW/w,maxH/h); cw=Math.round(w*r); ch=Math.round(h*r); } const c=document.createElement("canvas"); c.width=cw; c.height=ch; c.getContext("2d").drawImage(img,sx,sy,sw,sh,0,0,cw,ch); return c.toDataURL("image/jpeg",q).split(",")[1]; }
+async function putB64(path,b64,msg){ return gh("/contents/"+encodeURI(path),{method:"PUT",body:JSON.stringify({message:msg,content:b64,branch:"main"})}); }
+upIn.addEventListener("change",async()=>{
+  const files=[...upIn.files]; if(!files.length||!upTarget) return;
+  const {L,slug}=upTarget; const existing=S.tree.filter(p=>p.startsWith("listings/"+slug+"/album/")||p.startsWith("listings/"+slug+"/thumbs/")).map(p=>parseInt((p.match(/(\d+)\.jpg$/)||[])[1]||"0")); let n=existing.length?Math.max(...existing):0;
+  let ok=0, fail=[];
+  for(const f of files){
+    n++; const nn=String(n).padStart(2,"0"); toast("上傳中 "+(ok+fail.length+1)+"/"+files.length+"…");
+    try{ const img=await decode(f); const full=toJpeg(img,2048,2048,.86,false), th=toJpeg(img,240,240,.78,true);
+      await putB64("listings/"+slug+"/album/"+nn+".jpg",full,"上傳照片 "+L.code+" #"+nn); await putB64("listings/"+slug+"/thumbs/"+nn+".jpg",th,"縮圖 "+L.code+" #"+nn);
+      S.tree.push("listings/"+slug+"/album/"+nn+".jpg","listings/"+slug+"/thumbs/"+nn+".jpg"); (S.thumbs[slug]=S.thumbs[slug]||[]).push("listings/"+slug+"/thumbs/"+nn+".jpg"); S.thumbs[slug].sort(); ok++; }
+    catch(e){ n--; fail.push(f.name+"："+String(e.message||e).slice(0,60)); }
+  }
+  if(ok){ try{ await putJSON("listings/"+slug+"/album_meta.json",{link:L.photos||"",count:(S.thumbs[slug]||[]).length,synced_at:new Date().toISOString(),source:"upload"},null,"照片清單 "+L.code); }catch(e){} }
+  toast(ok?("已上傳 "+ok+" 張"+(fail.length?"，"+fail.length+" 張失敗":"")):"上傳失敗："+(fail[0]||""));
+  if(fail.some(x=>/讀取/.test(x))) setTimeout(()=>toast("iPhone 的 HEIC 格式有些瀏覽器讀不了，改用 Safari 或先轉成 JPG"),4600);
+  renderLst();
+});
+
 function parsePick(v,max){const o=[];String(v||"").replace(/，/g,",").split(",").map(x=>x.trim()).filter(Boolean).forEach(x=>{const m=x.match(/^(\d+)\s*-\s*(\d+)$/); if(m){let a=+m[1],b=+m[2],s=a<=b?1:-1; for(let i=a;s>0?i<=b:i>=b;i+=s)o.push(i);} else if(/^\d+$/.test(x)) o.push(+x);}); return [...new Set(o)].filter(n=>n>=1&&(!max||n<=max));}
 function fillListingSel(sel){ const s=$("#ed-listing"); s.replaceChildren(); const o=el("option",null,"知識文（不綁物件）"); o.value=""; s.append(o); S.listings.forEach(L=>{const x=el("option",null,L.code+" "+(L.name||"")); x.value=L.code; s.append(x);}); if(sel&&!S.listings.some(L=>L.code===sel)){const x=el("option",null,sel+"（未同步）"); x.value=sel; s.append(x);} s.value=sel||""; }
 function openEd(d,day){
