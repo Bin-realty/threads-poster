@@ -76,6 +76,16 @@ def enqueue(f, d, pub):
         return False
     dd = LISTINGS / slug
     (dd / "photos").mkdir(parents=True, exist_ok=True)
+    src_album = d.get("album")
+    if src_album and src_album != slug and (LISTINGS / src_album / "album").is_dir():
+        import shutil
+        for sub in ("album", "thumbs"):
+            if (LISTINGS / src_album / sub).is_dir():
+                shutil.rmtree(dd / sub, ignore_errors=True)
+                shutil.copytree(LISTINGS / src_album / sub, dd / sub)
+        meta = LISTINGS / src_album / "album_meta.json"
+        if meta.exists():
+            (dd / "album_meta.json").write_text(meta.read_text(encoding="utf-8"), encoding="utf-8")
     for old in (dd / "photos").glob("*"):
         old.unlink()
     (dd / "post.txt").write_text(d.get("text", "").strip() + "\n", encoding="utf-8")
