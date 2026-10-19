@@ -1,0 +1,1 @@
+make_sheet.py 本體在專案文件 claude/make_sheet.py（由專案對話維護）。放進 repo 時整份複製過來即可；範本 docx（台灣房屋「詳細售屋資料表」）不放 repo，執行時由專案對話提供。
