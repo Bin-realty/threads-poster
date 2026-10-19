@@ -3,7 +3,7 @@ name: 發文 Post to Threads
 on:
   push:
     branches: [main]
-    paths: ["publish/**", "delete/**", "sync/**", "outbox/**"]
+    paths: ["publish/**", "delete/**", "sync/**", "outbox/**", "drafts/**"]
   schedule:
     - cron: "*/15 * * * *"   # 每 15 分鐘檢查排程貼文是否到期
   workflow_dispatch:
@@ -36,11 +36,12 @@ jobs:
         run: echo "${{ inputs.mode }}" > "publish/${{ inputs.listing }}"
       - name: 同步照片＋從 Google 相簿匯入照片
         run: |
+          python3 scripts/queue.py queue
           if ls sync/* >/dev/null 2>&1; then pip install -q pillow; python3 scripts/threads.py sync; fi
           python3 scripts/threads.py import
           git config user.name "threads-bot"
           git config user.email "threads-bot@users.noreply.github.com"
-          git add -A listings sync
+          git add -A listings sync drafts publish
           if ! git diff --cached --quiet; then
             git commit -q -m "匯入相簿照片 $(TZ=Asia/Taipei date '+%F %R')"
             git pull --rebase -q && git push -q
@@ -59,6 +60,7 @@ jobs:
         run: |
           git config user.name "threads-bot"
           git config user.email "threads-bot@users.noreply.github.com"
-          git add -A listings publish delete sync outbox; for f in comments.json reply_log.json; do if [ -f $f ]; then git add $f; fi; done
+          python3 scripts/queue.py settle || true
+          git add -A listings publish delete sync outbox drafts; for f in comments.json reply_log.json; do if [ -f $f ]; then git add $f; fi; done
           git diff --cached --quiet || git commit -m "發文紀錄 $(TZ=Asia/Taipei date '+%F %R')"
           git pull --rebase -q && git push -q
