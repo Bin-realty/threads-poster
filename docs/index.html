@@ -621,11 +621,16 @@ upIn.addEventListener("change",async()=>{
   const {L,slug,done}=upTarget; const existing=S.tree.filter(p=>p.startsWith("listings/"+slug+"/album/")||p.startsWith("listings/"+slug+"/thumbs/")).map(p=>parseInt((p.match(/(\d+)\.jpg$/)||[])[1]||"0")); let n=existing.length?Math.max(...existing):0;
   let ok=0, fail=[];
   for(const f of files){
-    n++; const nn=String(n).padStart(2,"0"); toast("上傳中 "+(ok+fail.length+1)+"/"+files.length+"…");
+    n++; const nn=String(n).padStart(2,"0"), ap="listings/"+slug+"/album/"+nn+".jpg"; toast("上傳中 "+(ok+fail.length+1)+"/"+files.length+"…");
+    let aSha=null;
     try{ const img=await decode(f); const full=toJpeg(img,2048,2048,.86,false), th=toJpeg(img,240,240,.78,true);
-      await putB64("listings/"+slug+"/album/"+nn+".jpg",full,"上傳照片 "+L.code+" #"+nn); await putB64("listings/"+slug+"/thumbs/"+nn+".jpg",th,"縮圖 "+L.code+" #"+nn);
-      S.tree.push("listings/"+slug+"/album/"+nn+".jpg","listings/"+slug+"/thumbs/"+nn+".jpg"); (S.thumbs[slug]=S.thumbs[slug]||[]).push("listings/"+slug+"/thumbs/"+nn+".jpg"); S.thumbs[slug].sort(); ok++; }
-    catch(e){ n--; fail.push(f.name+"："+String(e.message||e).slice(0,60)); }
+      const ra=await putB64(ap,full,"上傳照片 "+L.code+" #"+nn); aSha=(ra&&ra.content&&ra.content.sha)||null; await putB64("listings/"+slug+"/thumbs/"+nn+".jpg",th,"縮圖 "+L.code+" #"+nn);
+      S.tree.push(ap,"listings/"+slug+"/thumbs/"+nn+".jpg"); (S.thumbs[slug]=S.thumbs[slug]||[]).push("listings/"+slug+"/thumbs/"+nn+".jpg"); S.thumbs[slug].sort(); ok++; }
+    catch(e){
+      /* 大圖存了、縮圖沒存：把大圖刪掉，編號才能重用；刪不掉就跳過這個編號，避免後面每張都撞號失敗 */
+      let free=!aSha&&e.status!==422; if(aSha){ try{ await delFile(ap,aSha,"移除沒有縮圖的照片 "+L.code+" #"+nn); free=true; }catch(_){} }
+      if(free) n--; else S.tree.push(ap);
+      fail.push(f.name+"："+String(e.message||e).slice(0,60)); }
   }
   if(ok){ try{ await putJSON("listings/"+slug+"/album_meta.json",{link:L.photos||"",count:(S.thumbs[slug]||[]).length,synced_at:new Date().toISOString(),source:"upload"},null,"照片清單 "+L.code); }catch(e){} }
   toast(ok?("已上傳 "+ok+" 張"+(fail.length?"，"+fail.length+" 張失敗":"")):"上傳失敗："+(fail[0]||""));
