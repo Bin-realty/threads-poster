@@ -1,0 +1,45 @@
+name: 鑰匙續期 Token refresh
+
+on:
+  schedule:
+    - cron: "17 19 * * 0"   # 每週一 03:17（台灣時間）
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "refresh=續期、check=檢查、reseed=改用新的 THREADS_TOKEN"
+        required: true
+        default: check
+        type: choice
+        options: [check, refresh, reseed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: threads-post
+  cancel-in-progress: false
+
+jobs:
+  token:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: 執行
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+          RESEED: ${{ inputs.action == 'reseed' && '1' || '0' }}
+        run: |
+          ACTION="${{ inputs.action }}"
+          case "$ACTION" in
+            check) python3 scripts/threads.py check ;;
+            *)     python3 scripts/threads.py refresh && python3 scripts/threads.py check ;;
+          esac
+      - name: 儲存加密鑰匙
+        run: |
+          git config user.name "threads-bot"
+          git config user.email "threads-bot@users.noreply.github.com"
+          git add token.enc token_meta.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "鑰匙續期 $(TZ=Asia/Taipei date '+%F')"
+          git pull --rebase -q && git push -q

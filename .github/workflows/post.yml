@@ -1,0 +1,47 @@
+name: 發文 Post to Threads
+
+on:
+  push:
+    branches: [main]
+    paths: ["publish/**"]
+  workflow_dispatch:
+    inputs:
+      listing:
+        description: "物件資料夾名稱（listings/ 底下）"
+        required: true
+      mode:
+        description: "post=發布、dry=試跑不發、force=忽略 3 天防洗版"
+        required: true
+        default: post
+        type: choice
+        options: [post, dry, force]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: threads-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: 建立手動指令
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "${{ inputs.mode }}" > "publish/${{ inputs.listing }}"
+      - name: 發文
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+        run: python3 scripts/threads.py process
+      - name: 儲存發文紀錄
+        if: always()
+        run: |
+          git config user.name "threads-bot"
+          git config user.email "threads-bot@users.noreply.github.com"
+          git add -A listings publish
+          git diff --cached --quiet || git commit -m "發文紀錄 $(TZ=Asia/Taipei date '+%F %R')"
+          git pull --rebase -q && git push -q
