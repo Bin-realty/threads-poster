@@ -639,10 +639,10 @@ function openEd(d,day){
   ["#ed-listing","#ed-text","#ed-reply","#ed-pick","#ed-save","#ed-sched","#ed-send","#ed-at","#ed-spec","#ed-sign","#ed-topic","#ed-upload"].forEach(x=>$(x).disabled=lock);
   $("#ed-del").hidden=!cur||["處理中","待發","刪除中"].includes(init.status);
   $("#ed-del").textContent=["已發布","已刪除"].includes(init.status)?"從清單移除":"刪除";
-  document.querySelector(".foot .main").hidden=lock; document.querySelector(".foot .sched").hidden=lock;
+  document.querySelector(".foot .main").hidden=lock; document.querySelector(".foot .sched").hidden=true;
   const op=$("#ed-open"); op.hidden=!init.permalink||init.status==="已刪除"; if(init.permalink) op.href=init.permalink;
   $("#ed-unpub").hidden=init.status!=="已發布";
-  const m=$("#ed-msg"); m.className="msg"; m.replaceChildren();
+  const m=$("#ed-msg"); m.className="msg"; m.replaceChildren(); if(init.status==="已排程"&&init.scheduledAt) m.textContent="已排程 "+toLocal(init.scheduledAt).replace("T"," ")+"。改時間或取消請到「排程」分頁；按「存草稿」也會取消排程。";
   if(init.status==="已發布") m.textContent="已發布 "+fmt(init.postedAt)+"。要換內容：先「從 Threads 刪除」再重發；要再發一次：到「排程」勾它。";
   else if(init.status==="已刪除") m.textContent="已從 Threads 刪除。";
   else if(init.status==="刪除中") m.textContent="刪除中，約 1–3 分鐘。";
