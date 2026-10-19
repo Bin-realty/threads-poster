@@ -81,6 +81,10 @@ h2:first-child{margin-top:0}
 .post .body{min-width:0;display:flex;flex-direction:column;gap:3px}
 .post .line1{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .post .line1 b{font-weight:500;color:var(--fg)}
+details.lib summary{list-style:none;cursor:pointer}details.lib summary::-webkit-details-marker{display:none}
+details.lib summary h2::after{content:"展開";font:500 12px var(--f);color:var(--accent);margin-left:auto}
+details.lib[open] summary h2::after{content:"收起"}
+details.lib .list{margin-top:4px}
 .post .line1 time{font-family:var(--mono)}
 .post .txt{font-size:15px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .post .m{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
@@ -321,7 +325,7 @@ function card(d){
   const b=el("div","body"), l1=el("div","line1");
   l1.append(el("span","st s-"+d.status,d.status));
   const w=whenOf(d); if(w&&d.status!=="草稿"){ const t=el("time",null,fmt(w)); l1.append(t); }
-  l1.append(el("b",null,d.listing?(d.listing+" "+((L&&L.name)||"")):"知識文"));
+  l1.append(el("b",null,d.listing?(d.listing+" "+((L&&L.name)||d.topic||"")):(d.topic||"知識文")));
   b.append(l1, el("div","txt",firstLine(d)));
   const m=[]; const s=statOf(d); if(s) m.push("👁 "+s.views+"　❤️ "+s.likes+"　💬 "+s.replies); if(d.hook) m.push("招式："+d.hook); if(d.source==="tracker") m.push("來自追蹤台");
   const mm=el("div","m"); m.forEach(x=>mm.append(el("span",null,x))); if(d.error) mm.append(el("span","err",d.error)); if(mm.childNodes.length) b.append(mm);
@@ -343,8 +347,10 @@ function renderPosts(){
   const byT=(a,b)=>String(whenOf(a)).localeCompare(String(whenOf(b)));
   group("需要處理", S.drafts.filter(d=>d.status==="失敗").sort(byT).reverse());
   group("排程中", S.drafts.filter(d=>["已排程","待發","處理中"].includes(d.status)).sort(byT));
-  group("草稿", S.drafts.filter(d=>d.status==="草稿").sort(byT).reverse());
+  group("草稿", S.drafts.filter(d=>d.status==="草稿"&&!d.library).sort(byT).reverse());
   group("已發布", S.drafts.filter(d=>d.status==="已發布").sort(byT).reverse().slice(0,60));
+  const lib=S.drafts.filter(d=>d.status==="草稿"&&d.library).sort((a,b)=>String(a.topic||"").localeCompare(String(b.topic||""),"zh-Hant"));
+  if(lib.length){ const dt=el("details","lib"); dt.open=store.get("fct_lib")==="1"; dt.addEventListener("toggle",()=>store.set("fct_lib",dt.open?"1":"0")); const sm=el("summary"); const h=el("h2"); h.append("文案庫", el("small",null,lib.length+" 篇・從行銷快手匯入，打開改一改就能發")); sm.append(h); dt.append(sm); const l=el("div","list"); lib.forEach(d=>l.append(card(d))); dt.append(l); v.append(dt); }
   if(!S.drafts.length){ const e=el("div","empty"); e.append(el("b",null,"還沒有貼文"),"按右上「＋ 新貼文」開始，或在追蹤台寫好文案按「送到 Threads-Bin」。"); v.append(e); }
 }
 
@@ -526,6 +532,7 @@ async function saveDraft(status,extra){
   const base=cur?Object.fromEntries(Object.entries(cur).filter(([k])=>!k.startsWith("_"))):{id,createdAt:now,source:"panel"};
   const d=Object.assign(base,{listing:$("#ed-listing").value,text:$("#ed-text").value.trim(),reply:$("#ed-reply").value.trim(),pick:$("#ed-pick").value.trim(),status,updatedAt:now,error:""},extra||{});
   if(status!=="已排程") d.scheduledAt="";
+  if(status!=="草稿") d.library=false;
   const m=$("#ed-msg"); m.className="msg"; m.textContent="儲存中…";
   try{ const r=await putJSON(path,d,curSha,(status==="待發"?"立即發送 ":status==="已排程"?"排程 ":"草稿 ")+id); d._sha=r&&r.content&&r.content.sha; d._path=path; const i=S.drafts.findIndex(x=>x.id===id); i>=0?S.drafts[i]=d:S.drafts.push(d); $("#dlg").close(); render(); return true; }
   catch(e){ m.textContent="沒存成功："+e.message; m.className="msg err"; return false; }
