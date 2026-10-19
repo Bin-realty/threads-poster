@@ -166,8 +166,8 @@ async function gh(path,opt={}){
 }
 async function getFile(path){ const r=await gh("/contents/"+encodeURI(path)+"?ref=main"); if(!r||Array.isArray(r)) return null; return {text:b64d(r.content||""),sha:r.sha}; }
 async function getJSON(path,def){ try{ const f=await getFile(path); return f?{data:JSON.parse(f.text),sha:f.sha}:{data:def,sha:null}; }catch(e){ if(e instanceof SyntaxError) return {data:def,sha:null}; throw e; } }
-async function putFile(path,text,sha,msg){ return gh("/contents/"+encodeURI(path),{method:"PUT",body:JSON.stringify({message:msg||("發脆台："+path),content:b64e(text),sha:sha||undefined,branch:"main"})}); }
-async function delFile(path,sha,msg){ return gh("/contents/"+encodeURI(path),{method:"DELETE",body:JSON.stringify({message:msg||("發脆台刪除："+path),sha,branch:"main"})}); }
+async function putFile(path,text,sha,msg){ return gh("/contents/"+encodeURI(path),{method:"PUT",body:JSON.stringify({message:msg||("Threads-Bin："+path),content:b64e(text),sha:sha||undefined,branch:"main"})}); }
+async function delFile(path,sha,msg){ return gh("/contents/"+encodeURI(path),{method:"DELETE",body:JSON.stringify({message:msg||("Threads-Bin 刪除："+path),sha,branch:"main"})}); }
 async function putJSON(path,obj,sha,msg){ try{ return await putFile(path,JSON.stringify(obj,null,1)+"\n",sha,msg); }catch(e){ if(e.status===409||e.status===422){ const f=await getFile(path); return putFile(path,JSON.stringify(obj,null,1)+"\n",f&&f.sha,msg); } throw e; } }
 const pad=n=>String(n).padStart(2,"0");
 const tpe=iso=>{const d=new Date(iso); return isNaN(d)?null:new Date(d.getTime()+8*3600e3);};
@@ -278,8 +278,8 @@ function renderCmts(){
 }
 function renderLst(){
   const v=$("#v-lst"); v.replaceChildren();
-  v.append(el("p","hint","物件規格從追蹤台同步過來（只有規格，沒有屋主資料與門牌）。要更新請在追蹤台按「同步到發脆台」。照片按「同步照片」會抓整本 Google 相簿，約 2–3 分鐘。"));
-  if(!S.listings.length){ v.append(el("div","empty","還沒有物件。請在追蹤台按「同步到發脆台」。")); return; }
+  v.append(el("p","hint","物件規格從追蹤台同步過來（只有規格，沒有屋主資料與門牌）。要更新請在追蹤台按「同步物件到 Threads-Bin」。照片按「同步照片」會抓整本 Google 相簿，約 2–3 分鐘。"));
+  if(!S.listings.length){ v.append(el("div","empty","還沒有物件。請在追蹤台按「同步物件到 Threads-Bin」。")); return; }
   S.listings.forEach(L=>{ const slug=L.code.toLowerCase(), n=(S.thumbs[slug]||[]).length, c=el("div","cmt");
     const t=el("div","row"); t.style.justifyContent="space-between"; t.append(el("b",null,L.code+" "+(L.name||"")+(L.ask?"｜"+L.ask:"")));
     const b=el("button","small",n?"重新同步照片":"同步照片"); const busy=S.tree.includes("sync/"+slug); if(busy){b.disabled=true; b.textContent="同步中…";}
@@ -326,7 +326,7 @@ function edChecks(){
   const m=t.match(INTERNAL); m?add("bad","有內部用語「"+m[0]+"」"):add("ok","沒有內部用語");
   /\d+\s*號|\d+\s*樓之\s*\d+|\d+\s*巷|巷\s*\d|\d+\s*弄/.test(t)?add("bad","出現門牌細節，只寫到路名"):add("ok","沒有完整門牌");
   if(L&&L.askWan){ const nums=[...t.replace(/,/g,"").matchAll(/(\d+(?:\.\d+)?)\s*萬/g)].map(x=>parseFloat(x[1])); nums.includes(L.askWan)?add("ok","售價和庫存一致（"+L.ask+"）"):add("bad","主文沒有寫到售價 "+L.ask+"（或數字不一樣）"); }
-  if(code&&!L) add("warn","這個物件還沒同步到發脆台（照片抓不到）");
+  if(code&&!L) add("warn","這個物件還沒同步物件到 Threads-Bin（照片抓不到）");
   /line\.me\/R\/ti\/p\/@a0888/.test(r)?add("ok","留言有官方 LINE"):add("warn","留言沒有官方 LINE 連結");
   /line\.me|https?:\/\//.test(t)?add("warn","主文有連結，可能降低曝光；放留言比較好"):null;
   if(code){ const last=S.drafts.filter(d=>d.listing===code&&d.status==="已發布"&&(!cur||d.id!==cur.id)).map(d=>d.postedAt).sort().pop(); if(last&&Date.now()-new Date(last).getTime()<72*3600e3) add("warn","這個物件 3 天內發過，系統會擋（避免洗版）"); }
@@ -353,7 +353,7 @@ async function saveDraft(status,extra){
 $("#ed-save").addEventListener("click",()=>saveDraft(cur&&cur.status==="已排程"?"草稿":"草稿"));
 $("#ed-send").addEventListener("click",async()=>{ const bad=edChecks().filter(x=>x[0]==="bad"); if(bad.length){ $("#ed-msg").textContent="還有 "+bad.length+" 項紅色 ✗ 沒通過"; return; } if(await saveDraft("待發")){ toast("已送出，約 1–3 分鐘發布"); setTimeout(()=>loadAll().catch(()=>{}),45000); } });
 $("#ed-sched").addEventListener("click",async()=>{ const bad=edChecks().filter(x=>x[0]==="bad"); if(bad.length){ $("#ed-msg").textContent="還有 "+bad.length+" 項紅色 ✗ 沒通過"; return; } const v=$("#ed-at").value; if(!v){ $("#ed-msg").textContent="先選排程時間"; return $("#ed-at").focus(); } const iso=v+":00+08:00"; if(new Date(iso).getTime()<Date.now()+5*60e3){ $("#ed-msg").textContent="排程時間要在 5 分鐘以後"; return; } if(await saveDraft("已排程",{scheduledAt:iso})) toast("已排程 "+fmt(iso)+"（每 15 分鐘檢查，可能晚一點點）"); });
-$("#ed-del").addEventListener("click",async()=>{ const b=$("#ed-del"); if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="確定刪除？再按一次"; return; } delete b.dataset.armed; b.textContent="刪除"; if(!cur) return; try{ const f=await getFile(cur._path||"drafts/"+cur.id+".json"); if(f) await delFile(cur._path||"drafts/"+cur.id+".json",f.sha); S.drafts=S.drafts.filter(x=>x.id!==cur.id); $("#dlg").close(); render(); toast(cur.status==="已發布"?"已從發脆台移除（Threads 上的貼文不會被刪）":"已刪除"); }catch(e){ $("#ed-msg").textContent="刪除失敗："+e.message; } });
+$("#ed-del").addEventListener("click",async()=>{ const b=$("#ed-del"); if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="確定刪除？再按一次"; return; } delete b.dataset.armed; b.textContent="刪除"; if(!cur) return; try{ const f=await getFile(cur._path||"drafts/"+cur.id+".json"); if(f) await delFile(cur._path||"drafts/"+cur.id+".json",f.sha); S.drafts=S.drafts.filter(x=>x.id!==cur.id); $("#dlg").close(); render(); toast(cur.status==="已發布"?"已從 Threads-Bin 移除（Threads 上的貼文不會被刪）":"已刪除"); }catch(e){ $("#ed-msg").textContent="刪除失敗："+e.message; } });
 $("#dlg").addEventListener("close",()=>{ const b=$("#ed-del"); delete b.dataset.armed; b.textContent="刪除"; });
 $("#btn-new").addEventListener("click",()=>openEd(null));
 $("#btn-refresh").addEventListener("click",()=>loadAll().catch(e=>toast("讀取失敗："+e.message)));
