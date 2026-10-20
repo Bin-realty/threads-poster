@@ -9,11 +9,12 @@
  "topic": "",
  "source": "tracker",
  "createdAt": "2026-10-19T12:24:44.191Z",
- "updatedAt": "2026-10-20T02:51:44.793Z",
- "status": "草稿",
+ "updatedAt": "2026-10-20T05:08:03.666Z",
+ "status": "待排",
  "scheduledAt": "",
  "ext": null,
  "album": "",
  "albumLink": "",
- "error": ""
+ "error": "",
+ "library": false
 }
