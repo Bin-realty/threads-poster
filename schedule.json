@@ -10,5 +10,8 @@
  "queue": [
   "ojgceu9nt8xcxnu4971m"
  ],
- "cursor": 0
+ "cursor": 0,
+ "fired": {
+  "2026-10-20T13:31": "R202610201331"
+ }
 }
