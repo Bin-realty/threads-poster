@@ -233,8 +233,6 @@ details.chk[open] summary{margin-bottom:8px}
 .foot{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 18px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;margin-top:4px}
 .foot .main{display:flex;gap:8px;align-items:center}
 .foot .main .primary{flex:1;padding:11px}
-.foot .sched{display:flex;gap:8px;align-items:center}
-.foot .sched input{flex:1}
 .foot .aux{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .msg{font-size:13px;color:var(--muted);min-height:1em}.msg.err{color:var(--bad)}
 .ptools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.ptools input{flex:1;min-width:160px}
@@ -315,7 +313,6 @@ details.chk[open] summary{margin-bottom:8px}
   <div class="foot">
     <div class="main" id="foot-draft"><button class="primary" id="ed-confirm">確認，可以發了</button><button id="ed-save">存草稿</button></div>
     <div class="main" id="foot-ready" hidden><button class="primary" id="ed-send">立即發送</button><button id="ed-back">退回草稿</button></div>
-    <div class="sched" id="foot-sched" hidden><span class="hint" style="white-space:nowrap">排程時間</span><input type="datetime-local" id="ed-at" aria-label="排程時間"><button id="ed-sched">排程</button></div>
     <div class="aux"><button class="sm danger quiet" id="ed-del">刪除</button><button class="sm danger" id="ed-unpub" hidden>從 Threads 刪除這篇</button><a class="sm" id="ed-open" hidden target="_blank" rel="noopener" style="font-size:14px">在 Threads 打開 ↗</a></div>
   </div>
 </dialog>
@@ -667,11 +664,10 @@ function openEd(d,day){
   $("#ed-album").value=init.albumLink||"";
   fillListingSel(init.ext?"__ext":(init.listing||"")); if(init.ext){ $("#ext-name").value=init.ext.name||""; $("#ext-ask").value=init.ext.ask||""; $("#ext-agent").value=init.ext.agent||""; if(init.ext.spec) $("#ext-spec").value=init.ext.spec; } syncExt();
   $("#ed-text").value=init.text||""; $("#ed-reply").value=init.reply!=null?init.reply:(init.listing?DEF_REPLY:KNOW_REPLY); $("#ed-pick").value=init.pick||"";
-  $("#ed-at").value=init.scheduledAt?toLocal(init.scheduledAt):(day?day+"T12:30":"");
   const ready=["待排","已排程"].includes(init.status), hard=["待發","處理中","已發布","刪除中","已刪除"].includes(init.status), lock=ready||hard;
   ["#ed-listing","#ed-text","#ed-reply","#ed-pick","#ed-spec","#ed-sign","#ed-topic","#ed-upload","#ed-album","#ed-sync","#ed-pclear","#ext-name","#ext-ask","#ext-agent","#ext-spec"].forEach(x=>$(x).disabled=lock);
   $("#ed-lock").hidden=!ready;
-  $("#foot-draft").hidden=lock; $("#foot-ready").hidden=!ready; $("#foot-sched").hidden=init.status!=="待排"; $("#ed-back").textContent=init.status==="已排程"?"取消排程，退回草稿":"退回草稿";
+  $("#foot-draft").hidden=lock; $("#foot-ready").hidden=!ready; $("#ed-back").textContent=init.status==="已排程"?"取消排程，退回草稿":"退回草稿";
   $("#ed-del").hidden=!cur||["處理中","待發","刪除中"].includes(init.status);
   $("#ed-del").textContent=["已發布","已刪除"].includes(init.status)?"從清單移除":"刪除";
   const op=$("#ed-open"); op.hidden=!init.permalink||init.status==="已刪除"; if(init.permalink) op.href=init.permalink;
@@ -747,7 +743,6 @@ $("#ed-save").addEventListener("click",async()=>{ if(await saveDraft("草稿")) 
 $("#ed-confirm").addEventListener("click",async()=>{ const n=bads(); if(n){ $("#ed-chk").open=true; $("#ed-msg").textContent="還有 "+n+" 項要改（紅色 ✗）"; $("#ed-msg").className="msg err"; $("#ed-chk").scrollIntoView({behavior:"smooth",block:"center"}); toast("還有 "+n+" 項要改，看紅色 ✗"); return; } if(cur&&cur.library){ const src=cur; cur=null; curSha=null; edId=newId(); const ok=await saveDraft("待排",{from_id:src.id,source:"library",library:false}); if(ok) toast("已從文案庫複製一份並確認，原稿留在文案庫。"); return; } if(await saveDraft("待排")){ toast("已確認。到「排程」排時間，或打開它按「立即發送」。"); } });
 $("#ed-back").addEventListener("click",async()=>{ if(!cur) return; const b=$("#ed-back"); b.disabled=true; try{ const body=Object.fromEntries(Object.entries(cur).filter(([k])=>!k.startsWith("_"))); Object.assign(body,{status:"草稿",scheduledAt:"",updatedAt:new Date().toISOString(),error:""}); const r=await putJSON(cur._path,body,cur._sha,"退回草稿 "+cur.id); Object.assign(cur,body,{_sha:r&&r.content&&r.content.sha}); $("#dlg").close(); render(); toast(cur.scheduledAt?"已退回草稿，排程已取消。":"已退回草稿，可以改了。"); }catch(e){ $("#ed-msg").textContent="沒成功："+e.message; $("#ed-msg").className="msg err"; } b.disabled=false; });
 $("#ed-send").addEventListener("click",async()=>{ const n=bads(); if(n){ $("#ed-chk").open=true; $("#ed-msg").textContent="還有 "+n+" 項要改（紅色 ✗）"; $("#ed-msg").className="msg err"; $("#ed-chk").scrollIntoView({behavior:"smooth",block:"center"}); toast("還有 "+n+" 項要改，看紅色 ✗"); return; } if(await saveDraft("待發")){ toast("已送出，約 1–3 分鐘發布"); setTimeout(()=>loadAll().catch(()=>{}),45000); } });
-$("#ed-sched").addEventListener("click",async()=>{ const n=bads(); if(n){ $("#ed-chk").open=true; $("#ed-msg").textContent="還有 "+n+" 項要改（紅色 ✗）"; $("#ed-msg").className="msg err"; $("#ed-chk").scrollIntoView({behavior:"smooth",block:"center"}); toast("還有 "+n+" 項要改，看紅色 ✗"); return; } const v=$("#ed-at").value; if(!v){ $("#ed-msg").textContent="先選排程時間"; return $("#ed-at").focus(); } const iso=v+":00+08:00"; if(new Date(iso).getTime()<Date.now()+5*60e3){ $("#ed-msg").textContent="排程時間要在 5 分鐘以後"; $("#ed-msg").className="msg err"; return; } if(await saveDraft("已排程",{scheduledAt:iso})) toast("已排程 "+fmt(iso)); });
 $("#ed-unpub").addEventListener("click",async()=>{ const b=$("#ed-unpub"); if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="確定刪除？再按一次"; return; } delete b.dataset.armed; if(!cur) return; b.disabled=true; const n=await markDelete([cur.id]); b.disabled=false; if(n){ $("#dlg").close(); render(); toast("已送出刪除，約 1–3 分鐘後從 Threads 消失"); setTimeout(()=>loadAll().catch(()=>{}),45000); } });
 $("#ed-del").addEventListener("click",async()=>{ const b=$("#ed-del"); if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="確定？再按一次"; return; } delete b.dataset.armed; if(!cur) return; try{ const f=await getFile(cur._path||"drafts/"+cur.id+".json"); if(f) await delFile(cur._path||"drafts/"+cur.id+".json",f.sha); S.drafts=S.drafts.filter(x=>x.id!==cur.id); $("#dlg").close(); render(); toast(cur.status==="已發布"?"已從清單移除，Threads 上的貼文還在":"已刪除"); }catch(e){ $("#ed-msg").textContent="刪除失敗："+e.message; $("#ed-msg").className="msg err"; } });
 $("#dlg").addEventListener("close",()=>{ ["#ed-del","#ed-unpub"].forEach(x=>{ delete $(x).dataset.armed; }); $("#ed-unpub").textContent="從 Threads 刪除這篇"; });
