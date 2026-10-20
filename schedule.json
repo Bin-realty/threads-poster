@@ -32,6 +32,23 @@
    "cursor": 0,
    "name": "循環 2",
    "active": true
+  },
+  {
+   "id": "p3",
+   "queue": [
+    "D202610201347799"
+   ],
+   "times": [
+    "15:00"
+   ],
+   "weekdays": [
+    2,
+    4,
+    6
+   ],
+   "cursor": 0,
+   "name": "循環 3",
+   "active": true
   }
  ],
  "fired": {
