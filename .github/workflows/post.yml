@@ -9,8 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       listing:
-        description: "物件資料夾名稱（listings/ 底下）"
-        required: true
+        description: "物件資料夾名稱（listings/ 底下）；空白＝只檢查排程（聖斌電腦的工作排程器每 5 分鐘這樣叫）"
+        required: false
+        default: ""
       mode:
         description: "post=發布、dry=試跑不發、force=忽略 3 天防洗版"
         required: true
@@ -32,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 建立手動指令
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.listing != ''
         run: echo "${{ inputs.mode }}" > "publish/${{ inputs.listing }}"
       - name: 同步照片＋從 Google 相簿匯入照片
         run: |
