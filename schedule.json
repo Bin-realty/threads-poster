@@ -15,6 +15,21 @@
    ],
    "name": "循環 3",
    "active": true
+  },
+  {
+   "id": "p4",
+   "queue": [
+    "P20261020-L014"
+   ],
+   "times": [
+    "22:40"
+   ],
+   "weekdays": [
+    2,
+    5
+   ],
+   "name": "循環 4",
+   "active": true
   }
  ]
 }
