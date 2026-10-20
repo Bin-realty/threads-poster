@@ -444,7 +444,7 @@ async function bulkDelete(){
 }
 
 /* ---------- planner ---------- */
-let planSeg=store.get("fct_pseg")||"mine";
+let planSeg=store.get("fct_pseg")||"mine", rotOpen=false;
 const segOf=d=>d.ext?"co":(d.listing?"mine":"other");
 function renderPlan(){
   const v=$("#v-plan"); v.replaceChildren();
@@ -476,7 +476,7 @@ function renderPlan(){
   if(!sched.length) v.append(el("p","hint","還沒有排程中的貼文。"));
   else { let cur=null, box=null; sched.forEach(x=>{ const k=dk(x.t); if(k!==cur){ cur=k; box=el("div","panel"); box.style.marginTop="8px"; const dh=el("h3",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+(k===todayKey()?"　今天":"")); dh.style.margin="0 0 6px"; box.append(dh); v.append(box); }
     const s=el("div","slot"); const tb=el("button","t",label(x.d)+"・"+firstLine(x.d)); tb.addEventListener("click",()=>openEd(x.d)); const cx=el("button","sm quiet","取消"); cx.title="取消排程，退回草稿"; cx.addEventListener("click",async()=>{ cx.disabled=true; try{ const body=Object.fromEntries(Object.entries(x.d).filter(([k2])=>!k2.startsWith("_"))); Object.assign(body,{status:"草稿",scheduledAt:"",updatedAt:new Date().toISOString(),error:""}); await putJSON(x.d._path,body,x.d._sha,"取消排程 "+x.d.id); toast("已取消，退回草稿。"); await loadAll().catch(()=>{}); }catch(e){ toast("沒成功："+e.message); cx.disabled=false; } }); s.append(el("time",null,hm(x.t)), tb, cx); box.append(s); }); }
-  const adv=el("details","lib"); adv.style.marginTop="12px"; const sm=el("summary"); const ah=el("h2"); ah.append("自動輪播", el("small",null,"進階，平常不用動")); sm.append(ah); adv.append(sm); adv.append(renderRotation()); v.append(adv);
+  const adv=el("details","lib"); adv.style.marginTop="12px"; adv.open=rotOpen; adv.addEventListener("toggle",()=>{ rotOpen=adv.open; }); const sm=el("summary"); const ah=el("h2"); ah.append("自動輪播", el("small",null,"進階，平常不用動")); sm.append(ah); adv.append(sm); adv.append(renderRotation()); v.append(adv);
 }
 function planAssign(){
   const sel=S.drafts.filter(d=>planSel.has(d.id)); if(!sel.length||!planTimes.length) return [];
