@@ -1,0 +1,7 @@
+[
+  {
+    "at": "2026-10-20T13:40:25+08:00",
+    "tracker_id": "R202610201331",
+    "error": "Threads API 錯誤 400：{\"error\":{\"message\":\"API access blocked.\",\"type\":\"OAuthException\",\"code\":200,\"fbtrace_id\":\"ASejQOfLPHESBoMx6sL1q-7\"}}"
+  }
+]
