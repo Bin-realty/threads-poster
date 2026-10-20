@@ -2,7 +2,8 @@
 """Threads-Bin 佇列。
 
 drafts/<id>.json：每篇貼文（status：草稿／已排程／待發／處理中／已發布／失敗／刪除中／已刪除）
-schedule.json  ：輪播計畫 {active, times:["08:00","20:00"], weekdays:[1..7], queue:[draft ids], cursor, fired:{"YYYY-MM-DDTHH:MM": id}}
+schedule.json  ：自動循環（可多組）{plans:[{id, name, active, times:["08:00"], weekdays:[1..7], queue:[draft ids], cursor}], fired:{"<組id>@YYYY-MM-DDTHH:MM": id}}
+                 舊格式（只有一組 {active, times, weekdays, queue, cursor}）讀進來自動轉成 plans[0]，id 為 p1
 
   queue   把「待發」「已排程且到時間」「輪播到點」轉成 publish/ 指令；「刪除中」轉成 delete/ 指令
   settle  發文／刪文後把結果寫回草稿
@@ -108,6 +109,61 @@ def enqueue(f, d, pub):
     return True
 
 
+def norm_sched(s):
+    """舊的單組格式轉成 {plans:[...], fired:{}}"""
+    if isinstance(s.get("plans"), list):
+        s.setdefault("fired", {})
+        return s
+    plan = {"id": "p1", "name": "循環 1", "active": bool(s.get("active")), "times": s.get("times") or [],
+            "weekdays": s.get("weekdays") or [], "queue": s.get("queue") or [], "cursor": s.get("cursor", 0)}
+    fired = {(k if "@" in k else "p1@" + k): v for k, v in (s.get("fired") or {}).items()}
+    return {"plans": [plan] if plan["queue"] else [], "fired": fired}
+
+
+def run_plan(plan, fired, t, all_d, pub):
+    """一組自動循環：到點就從這組的文案輪流挑一篇發"""
+    n, pid = 0, plan.get("id") or "p1"
+    for hhmm in sorted(plan["times"]):
+        try:
+            hh, mm = map(int, hhmm.split(":"))
+        except Exception:
+            continue
+        slot = t.replace(hour=hh, minute=mm, second=0, microsecond=0)
+        key = f"{pid}@{slot.strftime('%Y-%m-%dT%H:%M')}"
+        if key in fired or not (slot - timedelta(minutes=2) <= t <= slot + timedelta(minutes=40)):
+            continue
+        by_id = {d["id"]: (f, d) for f, d in all_d}
+        q = [i for i in plan["queue"] if i in by_id]
+        if not q:
+            break
+        cur = plan.get("cursor", 0) % len(q)
+        picked = None
+        for k in range(len(q)):
+            i = q[(cur + k) % len(q)]
+            f0, src = by_id[i]
+            if recently_posted(src.get("listing"), all_d):
+                continue
+            picked = (f0, src, (cur + k + 1) % len(q))
+            break
+        if not picked:
+            fired[key] = ""
+            print(f"🔁 {key}：這組每篇都在 72 小時內發過，這一輪跳過")
+            continue
+        f0, src, nxt = picked
+        rid = f"R{slot.strftime('%Y%m%d%H%M')}" + ("" if pid == "p1" else pid)
+        copy = {k: v for k, v in src.items() if not k.startswith("_")}
+        copy.update(id=rid, status="待發", source="rotation", plan=pid, from_id=src["id"], library=False, scheduledAt=slot.isoformat(timespec="seconds"),
+                    createdAt=t.isoformat(timespec="seconds"), updatedAt=t.isoformat(timespec="seconds"), error="")
+        rf = DRAFTS / f"{rid}.json"
+        save(rf, copy)
+        all_d.append((rf, copy))
+        if enqueue(rf, copy, pub):
+            fired[key] = rid
+            plan["cursor"] = nxt
+            n += 1
+    return n
+
+
 def cmd_queue():
     pub = {x.get("code"): x for x in (load(PUBLIC, {}) or {}).get("listings", [])}
     all_d = drafts()
@@ -133,55 +189,19 @@ def cmd_queue():
             ids.add(str(d["post_id"]))
             p.write_text("\n".join(sorted(ids)) + "\n", encoding="utf-8")
             print(f"🗑 {d['id']} → delete/{slug}")
-    # 3) 輪播
+    # 3) 自動循環（可多組，每組各自的時間、星期、文案）
     s = load(SCHED, None)
-    if s and s.get("active") and s.get("queue") and s.get("times"):
+    if s:
+        s = norm_sched(s)
         t = now()
-        wd = t.isoweekday()
-        if wd in (s.get("weekdays") or [1, 2, 3, 4, 5, 6, 7]):
-            fired = s.setdefault("fired", {})
-            for hhmm in sorted(s["times"]):
-                try:
-                    hh, mm = map(int, hhmm.split(":"))
-                except Exception:
-                    continue
-                slot = t.replace(hour=hh, minute=mm, second=0, microsecond=0)
-                key = slot.strftime("%Y-%m-%dT%H:%M")
-                if key in fired or not (slot - timedelta(minutes=2) <= t <= slot + timedelta(minutes=40)):
-                    continue
-                by_id = {d["id"]: (f, d) for f, d in all_d}
-                q = [i for i in s["queue"] if i in by_id]
-                if not q:
-                    break
-                cur = s.get("cursor", 0) % len(q)
-                picked = None
-                for k in range(len(q)):
-                    i = q[(cur + k) % len(q)]
-                    f0, src = by_id[i]
-                    if recently_posted(src.get("listing"), all_d):
-                        continue
-                    picked = (f0, src, (cur + k + 1) % len(q))
-                    break
-                if not picked:
-                    fired[key] = ""
-                    print(f"🔁 {key}：輪播裡每篇都在 72 小時內發過，這一輪跳過")
-                    continue
-                f0, src, nxt = picked
-                rid = f"R{slot.strftime('%Y%m%d%H%M')}"
-                copy = {k: v for k, v in src.items() if not k.startswith("_")}
-                copy.update(id=rid, status="待發", source="rotation", from_id=src["id"], library=False, scheduledAt=slot.isoformat(timespec="seconds"),
-                            createdAt=t.isoformat(timespec="seconds"), updatedAt=t.isoformat(timespec="seconds"), error="")
-                rf = DRAFTS / f"{rid}.json"
-                save(rf, copy)
-                all_d.append((rf, copy))
-                if enqueue(rf, copy, pub):
-                    fired[key] = rid
-                    s["cursor"] = nxt
-                    n += 1
-            # 清掉 7 天前的 fired 紀錄
-            cutoff = (t - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M")
-            s["fired"] = {k: v for k, v in fired.items() if k >= cutoff}
-            save(SCHED, s)
+        for plan in s["plans"]:
+            if plan.get("active") and plan.get("queue") and plan.get("times") and \
+                    t.isoweekday() in (plan.get("weekdays") or [1, 2, 3, 4, 5, 6, 7]):
+                n += run_plan(plan, s["fired"], t, all_d, pub)
+        # 清掉 7 天前的 fired 紀錄
+        cutoff = (t - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M")
+        s["fired"] = {k: v for k, v in s["fired"].items() if k.split("@")[-1] >= cutoff}
+        save(SCHED, s)
     print(f"排入 {n} 篇")
 
 

@@ -1444,7 +1444,7 @@ $("#cobtn-del").addEventListener("click",async()=>{ const b=$("#cobtn-del"); if(
 function coCleanText(j){
   return "刪除同事物件 "+(j.code||"")+"（追蹤台 collection coCleanup，文件 "+j.coId+"）：同事物件「"+j.name+"」"+(j.ask||"")+"（同事 "+(j.agent||"")+"）已從追蹤台刪除，請清掉 Threads-Bin 裡這間的貼文。"+
   "到 GitHub Bin-realty/threads-poster 的 drafts/*.json，找 ext.coId 等於「"+j.coId+"」、或 ext.name 等於「"+j.name+"」、或 ext.spec 的地址行和 ext.ask 都跟下面相同的草稿："+
-  "① status 已發布且有 post_id → 改成「刪除中」（queue.py 會從 Threads 刪文）；② 草稿、已排程、待發、失敗 → 改成「已刪除」並加 deletedReason「同事物件已刪除」；③ schedule.json 的 queue 移除這些草稿 id；④ 不要動其他草稿。"+
+  "① status 已發布且有 post_id → 改成「刪除中」（queue.py 會從 Threads 刪文）；② 草稿、已排程、待發、失敗 → 改成「已刪除」並加 deletedReason「同事物件已刪除」；③ schedule.json 每一組 plans[].queue 移除這些草稿 id（移完沒文案的那組整組刪掉）；④ 不要動其他草稿。"+
   "commit、push 後，把追蹤台 coCleanup/"+j.coId+" 的 status 改成「完成」、doneAt 寫現在時間、result 寫處理了哪幾篇（沒找到就寫「Threads-Bin 沒有這間的貼文」）。"+
   "比對用的規格：\n"+(j.spec||"");
 }
@@ -1466,7 +1466,10 @@ async function coCleanBin(j){
       else if(["草稿","待排","已排程","待發","失敗"].includes(d.status)){ await writeJSON(POST_REPO,path,o=>o&&o.status===d.status?Object.assign(o,{status:"已刪除",deletedReason:"同事物件已刪除",updatedAt:now}):undefined,"同事物件已刪除："+d.id); del.push(d.id); }
     }
     const ids=hit.map(([,d])=>d.id);
-    if(ids.length) await writeJSON(POST_REPO,"schedule.json",o=>o&&Array.isArray(o.queue)&&o.queue.some(i=>ids.includes(i))?Object.assign(o,{queue:o.queue.filter(i=>!ids.includes(i))}):undefined,"輪播移除同事物件 "+(j.code||j.coId));
+    if(ids.length) await writeJSON(POST_REPO,"schedule.json",o=>{ if(!o) return undefined;
+      const hit=q=>Array.isArray(q)&&q.some(i=>ids.includes(i));
+      if(Array.isArray(o.plans)){ if(!o.plans.some(p=>hit(p.queue))) return undefined; o.plans.forEach(p=>{ p.queue=(p.queue||[]).filter(i=>!ids.includes(i)); }); o.plans=o.plans.filter(p=>p.queue.length); return o; }
+      return hit(o.queue)?Object.assign(o,{queue:o.queue.filter(i=>!ids.includes(i))}):undefined; },"輪播移除同事物件 "+(j.code||j.coId));
     const result=hit.length?[del.length&&("草稿 "+del.length+" 篇改已刪除"),gone.length&&("已發 "+gone.length+" 篇從 Threads 刪除中")].filter(Boolean).join("、")||"這間的貼文都已處理過":"Threads-Bin 沒有這間的貼文";
     await db.collection("coCleanup").doc(j.coId).update({status:"完成",doneAt:new Date().toISOString(),result});
     return true;
