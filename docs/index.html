@@ -726,7 +726,7 @@ function edChecks(){
   /阿斌|小蘇/.test(t+r)?add("bad","出現綽號，一律用蘇聖斌"):null;
   /(^|\s)@\w/.test(t)?add("bad","「@帳號」會變成標記別人"):null;
   const m=t.match(INTERNAL); m?add("bad","有內部用語「"+m[0]+"」"):add("ok","沒有內部用語");
-  /\d+\s*號|\d+\s*樓之\s*\d+|\d+\s*巷|巷\s*\d|\d+\s*弄/.test(t)?add("bad","出現門牌細節，只寫到路名"):add("ok","沒有完整門牌");
+  /\d+\s*號(?!\s*(快速|公路|道路|國道|省道|縣道|線|出口|捷運|公園|停車場))|\d+\s*樓之\s*\d+|\d+\s*巷|巷\s*\d|\d+\s*弄/.test(t)?add("bad","出現門牌細節，只寫到路名"):add("ok","沒有完整門牌");
   const ex=extOf(); const exW=ex&&ex.ask?parseFloat(String(ex.ask).replace(/,/g,"").match(/(\d+(?:\.\d+)?)\s*萬/)?.[1]||""):NaN;
   if(ex&&!ex.name) add("bad","其他物件：還沒填物件名稱");
   if(ex&&exW){ const nums=[...t.replace(/,/g,"").matchAll(/(\d+(?:\.\d+)?)\s*萬/g)].map(x=>parseFloat(x[1])); nums.includes(exW)?add("ok","售價和你填的一致"):add("bad","主文沒寫到售價 "+ex.ask+"，或數字不同"); }

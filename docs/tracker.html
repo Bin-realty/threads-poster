@@ -1300,7 +1300,7 @@ function postChecks(){
   /(^|\s)@\w/.test(t)?add("bad","有「@帳號」寫法，Threads 會變成標記別人；LINE 請用連結"):null;
   /阿斌/.test(t+r)?add("bad","出現綽號「阿斌」，文案一律用「聖斌／蘇聖斌」"):null;
   const m=t.match(INTERNAL); m?add("bad","有內部用語「"+m[0]+"」，不能對外"):add("ok","沒有內部用語");
-  /\d+\s*號|\d+\s*樓之\s*\d+|\d+\s*巷|巷\s*\d|\d+\s*弄/.test(t)?add("bad","出現門牌細節（號、樓之、巷弄），只寫到路名"):add("ok","沒有完整門牌");
+  /\d+\s*號(?!\s*(快速|公路|道路|國道|省道|縣道|線|出口|捷運|公園|停車場))|\d+\s*樓之\s*\d+|\d+\s*巷|巷\s*\d|\d+\s*弄/.test(t)?add("bad","出現門牌細節（號、樓之、巷弄），只寫到路名"):add("ok","沒有完整門牌");
   const aw=askWan(l); if(aw!=null){ const nums=[...t.replace(/,/g,"").matchAll(/(\d+(?:\.\d+)?)\s*萬/g)].map(x=>parseFloat(x[1])); if(!nums.includes(aw)) add("bad","主文沒有寫到售價 "+l.ask+"（或寫的數字不一樣）"); else if(nums.some(n=>n!==aw&&n>=100)) add("warn","主文出現售價以外的萬元數字，確認不會讓人誤會價格"); else add("ok","售價和庫存一致（"+l.ask+"）"); }
   if(pCo) add("warn","同事物件（"+([pCo.agent,pCo.agentPhone].filter(kn).join(" ")||"同事未填")+"）：發出去掛聖斌的名字與證號，先確認同事有委託、屋主同意上網廣告、售價是最新的");
   else if(!pKnow&&!postableOf(l)) add("bad","這個物件目前不是委託中，或沒有 Google 相簿連結");
