@@ -490,6 +490,14 @@ async function scheduleCopy(d,t){
   if(d.library||d.status==="已發布"){ const id=newId("S"); const body=Object.fromEntries(Object.entries(d).filter(([k])=>!k.startsWith("_")&&!["post_id","permalink","postedAt","stats","dryOkAt","dryPhotos","queuedAt","deletedAt"].includes(k))); Object.assign(body,{id,status:"已排程",scheduledAt:iso,library:false,from_id:d.id,source:d.library?"library":"repost",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),error:""}); await putJSON("drafts/"+id+".json",body,null,"排程 "+id); }
   else { const body=Object.fromEntries(Object.entries(d).filter(([k])=>!k.startsWith("_"))); Object.assign(body,{status:"已排程",scheduledAt:iso,updatedAt:new Date().toISOString(),error:""}); await putJSON(d._path,body,d._sha,"排程 "+d.id); }
 }
+function rotUpcoming(s,max){
+  const q=(s.queue||[]).map(id=>S.drafts.find(d=>d.id===id)).filter(Boolean), times=(s.times||[]).slice().sort(), wds=(s.weekdays&&s.weekdays.length)?s.weekdays:[1,2,3,4,5,6,7], out=[];
+  if(!q.length||!times.length) return out;
+  let c=(s.cursor||0)%q.length; const nowT=Date.now()+8*3600e3, base=new Date(nowT); base.setUTCHours(0,0,0,0);
+  for(let dd=0;dd<14&&out.length<max;dd++){ const day=new Date(base.getTime()+dd*864e5); if(!wds.includes(day.getUTCDay()||7)) continue;
+    for(const t of times){ if(out.length>=max) break; const [h,m]=t.split(":").map(Number), at=new Date(day.getTime()+(h*60+m)*60e3); if(at.getTime()<nowT-2*60e3||(s.fired&&(at.toISOString().slice(0,16) in s.fired))) continue; out.push({t:at,d:q[c]}); c=(c+1)%q.length; } }
+  return out;
+}
 function renderRotation(){
   const s=S.sched, p=el("div","panel"); p.style.marginTop="6px";
   const hd=el("div","row between"); const h=el("h3",null,"輪播（每天自動發）"); h.style.margin="0"; const sw=el("label","switch"); const cb=el("input"); cb.type="checkbox"; cb.checked=!!s.active; const swt=el("span",null,s.active?"運行中":"已停"); sw.append(cb,swt); hd.append(h,sw); p.append(hd);
@@ -501,6 +509,13 @@ function renderRotation(){
   if(!q.length) ql.append(el("p","hint","名單是空的。從下面挑貼文加進來。"));
   q.forEach((d,i)=>{ const r=el("div","q"); r.append(el("b",null,String(i+1)), el("span",null,label(d)+"・"+firstLine(d))); const up=el("button","sm quiet","↑"); up.disabled=i===0; up.addEventListener("click",()=>{ const a=s.queue; [a[i-1],a[i]]=[a[i],a[i-1]]; renderPlan(); }); const rm=el("button","sm quiet","移除"); rm.addEventListener("click",()=>{ s.queue=s.queue.filter(x=>x!==d.id); renderPlan(); }); r.append(up,rm); ql.append(r); });
   p.append(ql);
+  const up=el("div","preview"); up.append(el("b",null,"接下來會發"));
+  if(!s.active) up.append(el("span","hint","輪播目前停用，不會發。"));
+  if(!q.length) up.append(el("span","msg err","名單是空的 → 時間到了也不會發任何文。從下面挑貼文加進名單，再按「儲存輪播設定」。"));
+  else if(!(s.times||[]).length) up.append(el("span","msg err","還沒有時間，按「＋ 加時間」。"));
+  else { rotUpcoming(s,8).forEach(x=>{ const r=el("span"); r.append(el("b",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,18)); up.append(r); }); up.append(el("span","hint","同一物件 72 小時內發過會自動跳下一篇；改完要按「儲存輪播設定」才生效。")); }
+  if(!(s.weekdays||[]).length) up.append(el("span","hint","沒選星期＝每天都發。"));
+  p.append(up);
   const addRow=el("div","row"); const sel=el("select"); sel.style.flex="1"; const o0=el("option",null,"選一篇加進名單…"); o0.value=""; sel.append(o0); S.drafts.filter(d=>(["待排","已發布"].includes(d.status)||(d.library&&d.status==="草稿"))&&!(s.queue||[]).includes(d.id)).forEach(d=>{ const o=el("option",null,label(d)+"・"+firstLine(d).slice(0,24)); o.value=d.id; sel.append(o); }); const addb=el("button","sm","加入"); addb.addEventListener("click",()=>{ if(sel.value){ s.queue=[...(s.queue||[]),sel.value]; renderPlan(); } }); addRow.append(sel,addb); p.append(addRow);
   const save=el("button","primary","儲存輪播設定"); save.addEventListener("click",async()=>{ save.disabled=true; s.active=cb.checked; try{ const r=await putJSON("schedule.json",s,S.schedSha,"輪播設定"); S.schedSha=r&&r.content&&r.content.sha; toast(s.active?"輪播已啟動":"輪播設定已存，目前停用"); }catch(e){ toast("沒存成功："+e.message); } save.disabled=false; });
   cb.addEventListener("change",()=>{ swt.textContent=cb.checked?"運行中":"已停"; });
