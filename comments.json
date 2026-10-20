@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-19T18:33:13+08:00",
+ "updated_at": "2026-10-20T23:20:12+08:00",
  "items": [
   {
    "id": "18464207791189487",
@@ -38,6 +38,17 @@
    "username": "jng01.10",
    "text": "富邦銀行好像在旁邊沒錯",
    "timestamp": "2026-10-19T10:14:13+0000",
+   "answered": false
+  },
+  {
+   "id": "18139207516713453",
+   "post_id": "18094389329461719",
+   "tracker_id": "R202610202240p4",
+   "slug": "l014",
+   "permalink": "https://www.threads.com/@a0958810178/post/DeuGg1MFhaZ",
+   "username": "jng01.10",
+   "text": "我有客人",
+   "timestamp": "2026-10-20T15:18:04+0000",
    "answered": false
   }
  ]
