@@ -284,8 +284,8 @@ details.chk[open] summary{margin-bottom:8px}
 <dialog id="dlg">
   <div class="ed">
     <div class="row between"><h2 id="ed-title">貼文</h2><button class="sm quiet" id="ed-cancel">關閉</button></div>
-    <label class="field"><span>標題（只給自己看，不會發出去）</span><input id="ed-topic" placeholder="例：大毅讚幸福 樹海版"></label>
-    <label class="field"><span>這篇是哪個物件的？（選了就能一鍵帶入規格和照片；純知識文選「不是物件文」）</span><select id="ed-listing"></select></label>
+    <label class="field"><span>標題（只給自己看，不會發出去）</span><input id="ed-topic" placeholder="自己取，例：勝美築 雙車位版"></label>
+    <label class="field" hidden><span>這篇是哪個物件的？（選了就能一鍵帶入規格和照片；純知識文選「不是物件文」）</span><select id="ed-listing"></select></label>
     <div id="ed-ext" class="field" hidden style="background:var(--soft);border-radius:12px;padding:10px 12px;gap:8px">
       <div class="row"><label class="field" style="flex:2;min-width:140px"><span>物件名稱</span><input id="ext-name" placeholder="例：惠宇仰德"></label><label class="field" style="flex:1;min-width:100px"><span>售價</span><input id="ext-ask" placeholder="例：4,988萬"></label><label class="field" style="flex:1;min-width:100px"><span>同事（自己記）</span><input id="ext-agent" placeholder="只填名字，不填電話"></label></div>
       <label class="field"><span>規格（照這個格式填，沒有的行刪掉；地址只到路名）</span><textarea id="ext-spec" rows="7">┃地址：台中市○○區○○路
@@ -683,7 +683,7 @@ function openEd(d,day){
   $("#ed-topic").value=init.topic||"";
   $("#ed-title").textContent=cur?(init.status==="已發布"?"已發布的貼文":init.status==="已刪除"?"已從 Threads 刪除":init.status==="待排"?"已確認的貼文":init.status==="已排程"?"已排程的貼文":"編輯草稿"):"新貼文";
   $("#ed-album").value=init.albumLink||"";
-  fillListingSel(init.ext?"__ext":(init.listing||"")); if(init.ext){ $("#ext-name").value=init.ext.name||""; $("#ext-ask").value=init.ext.ask||""; $("#ext-agent").value=init.ext.agent||""; if(init.ext.spec) $("#ext-spec").value=init.ext.spec; } syncExt();
+  fillListingSel(init.ext?"__ext":(init.listing||"")); if(init.ext){ $("#ext-name").value=init.ext.name||""; $("#ext-ask").value=init.ext.ask||""; $("#ext-agent").value=init.ext.agent||""; if(init.ext.spec) $("#ext-spec").value=init.ext.spec; } syncExt(); $("#ed-spec").hidden=!(init.listing||init.ext);
   $("#ed-text").value=init.text||""; $("#ed-reply").value=init.reply!=null?init.reply:(init.listing?DEF_REPLY:KNOW_REPLY); $("#ed-pick").value=init.pick||"";
   const ready=["待排","已排程"].includes(init.status), hard=["待發","處理中","已發布","刪除中","已刪除"].includes(init.status), lock=ready||hard;
   ["#ed-listing","#ed-text","#ed-reply","#ed-pick","#ed-spec","#ed-sign","#ed-topic","#ed-upload","#ed-album","#ed-sync","#ed-pclear","#ext-name","#ext-ask","#ext-agent","#ext-spec"].forEach(x=>$(x).disabled=lock);
