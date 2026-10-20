@@ -441,39 +441,66 @@ async function bulkDelete(){
 }
 
 /* ---------- planner ---------- */
-let planSeg=store.get("fct_pseg")||"mine", rotOpen=false;
+let planSeg=store.get("fct_pseg")||"mine";
 const segOf=d=>d.ext?"co":(d.listing?"mine":"other");
+let planMode=store.get("fct_pmode")==="loop"?"loop":"once", planWd=null;
+const wdText=w=>(!w||!w.length||w.length===7)?"每天":w.map(n=>"週"+WD[n%7]).join("、");
+async function saveSched(msg){ const r=await putJSON("schedule.json",S.sched,S.schedSha,"輪播設定"); S.schedSha=r&&r.content&&r.content.sha; if(msg) toast(msg); }
 function renderPlan(){
   const v=$("#v-plan"); v.replaceChildren();
-  const now=nowT(); if(!planDay||planDay<todayKey()) planDay=todayKey();
-  /* 1. 已確認文案 */
+  if(!planDay||planDay<todayKey()) planDay=todayKey();
+  const R=S.sched; R.queue=R.queue||[]; R.times=R.times||[];
+  if(!planWd) planWd=new Set((R.weekdays||[]).length===7?[]:(R.weekdays||[]));
+  const rq=R.queue.map(id=>S.drafts.find(d=>d.id===id)).filter(Boolean), running=!!(R.active&&rq.length&&R.times.length);
+  /* 1. 現在運行：自動循環＋已排程 */
+  const top=el("div","panel"); const th=el("h2",null,"現在運行"); th.style.margin="0 0 8px"; top.append(th);
+  const lh=el("div","row between"); const lt=el("h3",null,"自動循環　"); lt.style.margin="0"; lt.append(el("span","st "+(running?"s-已發布":"s-草稿"),running?"運行中":"沒有運行")); lh.append(lt);
+  if(running){ const stop=el("button","sm","停止循環"); stop.addEventListener("click",async()=>{ if(!confirm("停止自動循環？名單會留著，之後可以重新啟動。")) return; stop.disabled=true; R.active=false; try{ await saveSched("已停止自動循環"); }catch(e){ R.active=true; toast("沒成功："+e.message); } renderPlan(); }); lh.append(stop); }
+  else if(rq.length&&R.times.length){ const go=el("button","sm","重新啟動"); go.addEventListener("click",async()=>{ go.disabled=true; R.active=true; try{ await saveSched("自動循環已啟動"); }catch(e){ R.active=false; toast("沒成功："+e.message); } renderPlan(); }); lh.append(go); }
+  top.append(lh);
+  if(rq.length){
+    top.append(el("p","hint",wdText(R.weekdays)+" "+(R.times.join("、")||"（沒有時間）")+"，"+rq.length+" 篇輪流發；同一物件 72 小時內不重發。"));
+    const ql=el("div","queue"); rq.forEach((d,i)=>{ const r=el("div","q"); r.append(el("b",null,String(i+1)), el("span",null,label(d)+"・"+firstLine(d))); const rm=el("button","sm quiet","移除"); rm.addEventListener("click",async()=>{ rm.disabled=true; const old=R.queue; R.queue=R.queue.filter(x=>x!==d.id); try{ await saveSched("已從循環移除"); }catch(e){ R.queue=old; toast("沒成功："+e.message); } renderPlan(); }); r.append(rm); ql.append(r); }); top.append(ql);
+    if(running){ const up=el("div","preview"); up.style.marginTop="6px"; up.append(el("span",null,"接下來會發：")); rotUpcoming(R,4).forEach(x=>{ const r=el("span"); r.append(el("b",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,14)); up.append(r); }); top.append(up); }
+  } else top.append(el("p","hint","沒有自動循環。要用的話：下面勾文案 → 選「自動循環發文」。"));
+  const sched=S.drafts.filter(d=>d.status==="已排程"&&d.scheduledAt).map(d=>({d,t:tpe(d.scheduledAt)})).filter(x=>x.t).sort((a,b)=>a.t-b.t);
+  const sh=el("h3"); sh.style.margin="14px 0 0"; sh.append("已排程（只發一次）", el("small",null," "+sched.length+" 篇")); top.append(sh);
+  if(!sched.length) top.append(el("p","hint","沒有排程中的貼文。"));
+  else { let cur=null; sched.forEach(x=>{ const k=dk(x.t); if(k!==cur){ cur=k; const dh=el("div","hint",md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+(k===todayKey()?"　今天":"")); dh.style.margin="8px 0 0"; top.append(dh); }
+    const s=el("div","slot"); const tb=el("button","t",label(x.d)+"・"+firstLine(x.d)); tb.addEventListener("click",()=>openEd(x.d)); const cx=el("button","sm quiet","取消"); cx.title="取消排程，退回草稿"; cx.addEventListener("click",async()=>{ cx.disabled=true; try{ const body=Object.fromEntries(Object.entries(x.d).filter(([k2])=>!k2.startsWith("_"))); Object.assign(body,{status:"草稿",scheduledAt:"",updatedAt:new Date().toISOString(),error:""}); await putJSON(x.d._path,body,x.d._sha,"取消排程 "+x.d.id); toast("已取消，退回草稿。"); await loadAll().catch(()=>{}); }catch(e){ toast("沒成功："+e.message); cx.disabled=false; } }); s.append(el("time",null,hm(x.t)), tb, cx); top.append(s); }); }
+  v.append(top);
+  /* 2. 已確認文案（複選） */
   const ready=S.drafts.filter(d=>d.status==="待排"&&!d.library);
-  const hd=el("div","row between"); const h=el("h2"); h.append("已確認文案", el("small",null,ready.length+" 篇")); hd.append(h); v.append(hd);
+  const hd=el("div","row between"); hd.style.marginTop="14px"; const h=el("h2"); h.append("已確認文案", el("small",null,ready.length+" 篇，可複選")); hd.append(h); v.append(hd);
   const seg=el("div","chips"); [["mine","我的庫存"],["co","同事案件"],["other","知識文／其他"]].forEach(([k,t])=>{ const n=ready.filter(d=>segOf(d)===k).length; if(k==="other"&&!n) return; const b=el("button","chip",t+(n?" "+n:"")); b.setAttribute("aria-pressed",String(planSeg===k)); b.addEventListener("click",()=>{ planSeg=k; store.set("fct_pseg",k); renderPlan(); }); seg.append(b); }); v.append(seg);
   const list=ready.filter(d=>segOf(d)===planSeg).sort((a,b)=>String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
   const pl=el("div","picklist");
   if(!list.length){ const e=el("div","empty"); e.append(el("b",null,"這裡沒有已確認的文案"),"到「草稿」寫好、按「確認，可以發了」，就會出現在這裡。"); pl.append(e); }
-  list.forEach(d=>{ const r=el("div","pick"+(planSel.has(d.id)?" on":"")); const cb=el("input"); cb.type="checkbox"; cb.checked=planSel.has(d.id); const u=coverOf(d); let im; if(u){ im=el("img"); im.src=u; im.alt=""; im.loading="lazy"; } else im=el("div","k",d.listing?"宅":"知"); const t=el("div","t"); t.append((d.topic?d.topic+"・":"")+firstLine(d), el("small",null,label(d))); const ed=el("button","sm","預覽"); ed.title="打開看這篇的內容和照片"; ed.addEventListener("click",e=>{ e.stopPropagation(); openEd(d); }); r.append(cb,im,t,ed); r.addEventListener("click",()=>{ planSel.has(d.id)?planSel.delete(d.id):planSel.add(d.id); renderPlan(); }); pl.append(r); });
+  list.forEach(d=>{ const r=el("div","pick"+(planSel.has(d.id)?" on":"")); const cb=el("input"); cb.type="checkbox"; cb.checked=planSel.has(d.id); const u=coverOf(d); let im; if(u){ im=el("img"); im.src=u; im.alt=""; im.loading="lazy"; } else im=el("div","k",d.listing?"宅":"知"); const t=el("div","t"); t.append((d.topic?d.topic+"・":"")+firstLine(d), el("small",null,label(d)+(R.queue.includes(d.id)?"・循環中":""))); const ed=el("button","sm","預覽"); ed.title="打開看這篇的內容和照片"; ed.addEventListener("click",e=>{ e.stopPropagation(); openEd(d); }); r.append(cb,im,t,ed); r.addEventListener("click",()=>{ planSel.has(d.id)?planSel.delete(d.id):planSel.add(d.id); renderPlan(); }); pl.append(r); });
   v.append(pl);
-  /* 2. 選日期、時間 → 開始排程發文 */
+  /* 3. 選時間＋發文方式 */
   const sp=el("div","panel"); sp.style.marginTop="10px";
-  const h2=el("h3",null,"勾好文案後，選日期和時間"); h2.style.margin="0"; sp.append(h2);
-  const dr=el("div","row"); const di=el("input"); di.type="date"; di.value=planDay; di.min=todayKey(); di.style.maxWidth="180px"; di.addEventListener("change",()=>{ planDay=di.value||todayKey(); renderPlan(); }); dr.append(el("span","hint","日期"),di); sp.append(dr);
+  const h2=el("h3",null,"勾好文案後，選時間和發文方式"); h2.style.margin="0"; sp.append(h2);
+  const mc=el("div","chips"); [["once","只發一次"],["loop","自動循環發文"]].forEach(([k,t])=>{ const b=el("button","chip",t); b.setAttribute("aria-pressed",String(planMode===k)); b.addEventListener("click",()=>{ planMode=k; store.set("fct_pmode",k); renderPlan(); }); mc.append(b); }); sp.append(mc);
+  if(planMode==="once"){ const dr=el("div","row"); const di=el("input"); di.type="date"; di.value=planDay; di.min=todayKey(); di.style.maxWidth="180px"; di.addEventListener("change",()=>{ planDay=di.value||todayKey(); renderPlan(); }); dr.append(el("span","hint","從哪天開始"),di); sp.append(dr); }
+  else { const wk=el("div","wkdays"); [1,2,3,4,5,6,7].forEach(n=>{ const b=el("button",null,"週"+WD[n%7]); b.setAttribute("aria-pressed",String(planWd.has(n))); b.addEventListener("click",()=>{ planWd.has(n)?planWd.delete(n):planWd.add(n); renderPlan(); }); wk.append(b); }); sp.append(wk); sp.append(el("span","hint","星期都不選＝每天發")); }
   const tc=el("div","chips"); tc.append(el("span","hint","時間")); planTimes.forEach(t=>{ const b=el("button","chip",t+" ✕"); b.setAttribute("aria-pressed","true"); b.title="點一下移除這個時間"; b.addEventListener("click",()=>{ planTimes=planTimes.filter(x=>x!==t); store.set("fct_times",planTimes.join(",")); renderPlan(); }); tc.append(b); });
   const at=el("div","addtime"); const ti=el("input"); ti.type="time"; ti.value="18:00"; const ab=el("button","sm","＋ 加時間"); ab.addEventListener("click",()=>{ if(ti.value&&!planTimes.includes(ti.value)){ planTimes=[...planTimes,ti.value].sort(); store.set("fct_times",planTimes.join(",")); renderPlan(); } }); at.append(ti,ab); tc.append(at); sp.append(tc);
-  const plan=planAssign(); const pv=el("div","preview");
-  if(!planSel.size) pv.append(el("span",null,"還沒勾文案")); else if(!planTimes.length) pv.append(el("span",null,"還沒有時間，按「＋ 加時間」")); else { plan.forEach(x=>{ const s=el("span"); s.append(el("b",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,18)); pv.append(s); }); if(plan.length>planTimes.length) pv.append(el("span","hint","勾的比時間多，自動排到隔天同樣時間")); }
-  sp.append(pv);
-  const go=el("button","primary","開始排程發文"+(planSel.size?"（"+planSel.size+" 篇）":"")); go.disabled=!plan.length;
-  go.addEventListener("click",async()=>{ go.disabled=true; let n=0; for(const x of plan){ try{ await scheduleCopy(x.d,x.t); n++; }catch(e){ toast("有一篇沒排成功："+e.message); } } planSel.clear(); toast("已排 "+n+" 篇，時間到會自動發"); await loadAll().catch(()=>{}); go.disabled=false; });
-  sp.append(go); v.append(sp);
-  /* 3. 已排程 */
-  const sched=S.drafts.filter(d=>d.status==="已排程"&&d.scheduledAt).map(d=>({d,t:tpe(d.scheduledAt)})).filter(x=>x.t).sort((a,b)=>a.t-b.t);
-  const sh=el("h2"); sh.append("已排程", el("small",null,sched.length+" 篇")); v.append(sh);
-  if(!sched.length) v.append(el("p","hint","還沒有排程中的貼文。"));
-  else { let cur=null, box=null; sched.forEach(x=>{ const k=dk(x.t); if(k!==cur){ cur=k; box=el("div","panel"); box.style.marginTop="8px"; const dh=el("h3",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+(k===todayKey()?"　今天":"")); dh.style.margin="0 0 6px"; box.append(dh); v.append(box); }
-    const s=el("div","slot"); const tb=el("button","t",label(x.d)+"・"+firstLine(x.d)); tb.addEventListener("click",()=>openEd(x.d)); const cx=el("button","sm quiet","取消"); cx.title="取消排程，退回草稿"; cx.addEventListener("click",async()=>{ cx.disabled=true; try{ const body=Object.fromEntries(Object.entries(x.d).filter(([k2])=>!k2.startsWith("_"))); Object.assign(body,{status:"草稿",scheduledAt:"",updatedAt:new Date().toISOString(),error:""}); await putJSON(x.d._path,body,x.d._sha,"取消排程 "+x.d.id); toast("已取消，退回草稿。"); await loadAll().catch(()=>{}); }catch(e){ toast("沒成功："+e.message); cx.disabled=false; } }); s.append(el("time",null,hm(x.t)), tb, cx); box.append(s); }); }
-  const adv=el("details","lib"); adv.style.marginTop="12px"; adv.open=rotOpen; adv.addEventListener("toggle",()=>{ rotOpen=adv.open; }); const sm=el("summary"); const ah=el("h2"); ah.append("自動輪播", el("small",null,"進階，平常不用動")); sm.append(ah); adv.append(sm); adv.append(renderRotation()); v.append(adv);
+  const pv=el("div","preview"), selIds=ready.filter(d=>planSel.has(d.id)).map(d=>d.id);
+  if(!selIds.length) pv.append(el("span",null,"還沒勾文案")); else if(!planTimes.length) pv.append(el("span",null,"還沒有時間，按「＋ 加時間」"));
+  let go;
+  if(planMode==="once"){
+    const plan=planAssign();
+    if(selIds.length&&planTimes.length){ plan.forEach(x=>{ const s=el("span"); s.append(el("b",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,18)); pv.append(s); }); if(plan.length>planTimes.length) pv.append(el("span","hint","勾的比時間多，自動排到隔天同樣時間")); }
+    go=el("button","primary","開始排程發文"+(selIds.length?"（"+selIds.length+" 篇）":"")); go.disabled=!plan.length;
+    go.addEventListener("click",async()=>{ go.disabled=true; let n=0; for(const x of plan){ try{ await scheduleCopy(x.d,x.t); n++; }catch(e){ toast("有一篇沒排成功："+e.message); } } planSel.clear(); toast("已排 "+n+" 篇，時間到會自動發"); await loadAll().catch(()=>{}); go.disabled=false; });
+  } else {
+    const nr={queue:selIds,times:planTimes,weekdays:[...planWd].sort(),cursor:0,fired:R.fired};
+    if(selIds.length&&planTimes.length){ pv.append(el("span",null,wdText(nr.weekdays)+" "+planTimes.join("、")+"，這 "+selIds.length+" 篇輪流發，直到你按「停止循環」。")); rotUpcoming(nr,6).forEach(x=>{ const s=el("span"); s.append(el("b",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,18)); pv.append(s); }); pv.append(el("span","hint","同一物件 72 小時內發過會自動跳下一篇。")); const codes=ready.filter(d=>planSel.has(d.id)&&d.listing).map(d=>d.listing); if(new Set(codes).size<codes.length) pv.append(el("span","msg err","勾了同一個物件的好幾篇：72 小時內只會發其中一篇，其他時段會跳過或改發別篇。")); }
+    go=el("button","primary","開始自動循環"+(selIds.length?"（"+selIds.length+" 篇）":"")); go.disabled=!(selIds.length&&planTimes.length);
+    go.addEventListener("click",async()=>{ if(running&&!confirm("現在已經有自動循環在跑（"+rq.length+" 篇），要換成這次勾的 "+selIds.length+" 篇嗎？")) return; go.disabled=true; const old=Object.assign({},R); Object.assign(R,{active:true,queue:selIds,times:planTimes.slice(),weekdays:nr.weekdays,cursor:0}); try{ await saveSched("自動循環已啟動，"+selIds.length+" 篇輪流發"); planSel.clear(); }catch(e){ Object.assign(R,old); toast("沒成功："+e.message); } renderPlan(); });
+  }
+  sp.append(pv); sp.append(go); v.append(sp);
 }
 function planAssign(){
   const sel=S.drafts.filter(d=>planSel.has(d.id)); if(!sel.length||!planTimes.length) return [];
@@ -494,31 +521,6 @@ function rotUpcoming(s,max){
   for(let dd=0;dd<14&&out.length<max;dd++){ const day=new Date(base.getTime()+dd*864e5); if(!wds.includes(day.getUTCDay()||7)) continue;
     for(const t of times){ if(out.length>=max) break; const [h,m]=t.split(":").map(Number), at=new Date(day.getTime()+(h*60+m)*60e3); if(at.getTime()<nowT-2*60e3||(s.fired&&(at.toISOString().slice(0,16) in s.fired))) continue; out.push({t:at,d:q[c]}); c=(c+1)%q.length; } }
   return out;
-}
-function renderRotation(){
-  const s=S.sched, p=el("div","panel"); p.style.marginTop="6px";
-  const hd=el("div","row between"); const h=el("h3",null,"輪播（每天自動發）"); h.style.margin="0"; const sw=el("label","switch"); const cb=el("input"); cb.type="checkbox"; cb.checked=!!s.active; const swt=el("span",null,s.active?"運行中":"已停"); sw.append(cb,swt); hd.append(h,sw); p.append(hd);
-  p.append(el("p","hint","跟行銷快手一樣：設好時間和星期，系統每天在這些時間從名單裡輪流挑一篇發。同一個物件 72 小時內不會重發，會自動跳到下一篇。每發一次都會留一筆紀錄在「已發布」。"));
-  const tc=el("div","chips"); (s.times||[]).forEach(t=>{ const b=el("button","chip",t); b.setAttribute("aria-pressed","true"); b.title="點一下移除"; b.addEventListener("click",()=>{ s.times=s.times.filter(x=>x!==t); renderPlan(); }); tc.append(b); });
-  const at=el("div","addtime"); const ti=el("input"); ti.type="time"; ti.value="12:30"; const ab=el("button","sm","＋ 加時間"); ab.addEventListener("click",()=>{ if(ti.value&&!(s.times||[]).includes(ti.value)){ s.times=[...(s.times||[]),ti.value].sort(); renderPlan(); } }); at.append(ti,ab); tc.append(at); p.append(tc);
-  const wk=el("div","wkdays"); [1,2,3,4,5,6,7].forEach(n=>{ const b=el("button",null,"週"+WD[n%7]); b.setAttribute("aria-pressed",String((s.weekdays||[]).includes(n))); b.addEventListener("click",()=>{ const w=new Set(s.weekdays||[]); w.has(n)?w.delete(n):w.add(n); s.weekdays=[...w].sort(); renderPlan(); }); wk.append(b); }); p.append(wk);
-  const ql=el("div","queue"); const q=(s.queue||[]).map(id=>S.drafts.find(d=>d.id===id)).filter(Boolean);
-  if(!q.length) ql.append(el("p","hint","名單是空的。從下面挑貼文加進來。"));
-  q.forEach((d,i)=>{ const r=el("div","q"); r.append(el("b",null,String(i+1)), el("span",null,label(d)+"・"+firstLine(d))); const up=el("button","sm quiet","↑"); up.disabled=i===0; up.addEventListener("click",()=>{ const a=s.queue; [a[i-1],a[i]]=[a[i],a[i-1]]; renderPlan(); }); const rm=el("button","sm quiet","移除"); rm.addEventListener("click",()=>{ s.queue=s.queue.filter(x=>x!==d.id); renderPlan(); }); r.append(up,rm); ql.append(r); });
-  p.append(ql);
-  const up=el("div","preview"); up.append(el("b",null,"接下來會發"));
-  if(!s.active) up.append(el("span","hint","輪播目前停用，不會發。"));
-  if(!q.length) up.append(el("span","msg err","名單是空的 → 時間到了也不會發任何文。從下面挑貼文加進名單，再按「儲存輪播設定」。"));
-  else if(!(s.times||[]).length) up.append(el("span","msg err","還沒有時間，按「＋ 加時間」。"));
-  else { rotUpcoming(s,8).forEach(x=>{ const r=el("span"); r.append(el("b",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,18)); up.append(r); }); up.append(el("span","hint","同一物件 72 小時內發過會自動跳下一篇；改完要按「儲存輪播設定」才生效。")); }
-  if(!(s.weekdays||[]).length) up.append(el("span","hint","沒選星期＝每天都發。"));
-  p.append(up);
-  const addRow=el("div","row"); const sel=el("select"); sel.style.flex="1"; const o0=el("option",null,"選一篇加進名單…"); o0.value=""; sel.append(o0); S.drafts.filter(d=>(["待排","已發布"].includes(d.status)||(d.library&&d.status==="草稿"))&&!(s.queue||[]).includes(d.id)).forEach(d=>{ const o=el("option",null,label(d)+"・"+firstLine(d).slice(0,24)); o.value=d.id; sel.append(o); }); const addb=el("button","sm","加入"); addb.addEventListener("click",()=>{ if(sel.value){ s.queue=[...(s.queue||[]),sel.value]; renderPlan(); } }); addRow.append(sel,addb); p.append(addRow);
-  const save=el("button","primary","儲存輪播設定"); save.addEventListener("click",async()=>{ save.disabled=true; s.active=cb.checked; try{ const r=await putJSON("schedule.json",s,S.schedSha,"輪播設定"); S.schedSha=r&&r.content&&r.content.sha; toast(s.active?"輪播已啟動":"輪播設定已存，目前停用"); }catch(e){ toast("沒存成功："+e.message); } save.disabled=false; });
-  cb.addEventListener("change",()=>{ swt.textContent=cb.checked?"運行中":"已停"; });
-  p.append(save);
-  if(s.fired&&Object.keys(s.fired).length){ const last=Object.entries(s.fired).sort().slice(-3).reverse(); p.append(el("p","hint","最近輪播："+last.map(([k,v])=>k.replace("T"," ")+(v?"":"（跳過）")).join("、"))); }
-  return p;
 }
 
 /* ---------- stats ---------- */
