@@ -1,22 +1,6 @@
 {
  "plans": [
   {
-   "id": "p1",
-   "name": "循環 1",
-   "active": true,
-   "times": [
-    "14:02"
-   ],
-   "weekdays": [
-    2,
-    5
-   ],
-   "queue": [
-    "D202610201347799"
-   ],
-   "cursor": 1
-  },
-  {
    "id": "p2",
    "queue": [
     "D202610201408zr8"
