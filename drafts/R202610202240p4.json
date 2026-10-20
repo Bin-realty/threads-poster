@@ -10,7 +10,7 @@
  "source": "rotation",
  "createdAt": "2026-10-20T22:58:26+08:00",
  "updatedAt": "2026-10-20T22:58:26+08:00",
- "status": "處理中",
+ "status": "已發布",
  "scheduledAt": "2026-10-20T22:40:00+08:00",
  "error": "",
  "ext": null,
@@ -19,5 +19,8 @@
  "library": false,
  "plan": "p4",
  "from_id": "P20261020-L014",
- "queuedAt": "2026-10-20T22:58:26+08:00"
+ "queuedAt": "2026-10-20T22:58:26+08:00",
+ "permalink": "https://www.threads.com/@a0958810178/post/DeuGg1MFhaZ",
+ "post_id": "18094389329461719",
+ "postedAt": "2026-10-20T22:58:56+08:00"
 }
