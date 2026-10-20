@@ -311,7 +311,7 @@ body.nologin nav.tabs,body.nologin .pane{display:none!important}
   </div>
 
   <div class="pane" id="pane-post" hidden>
-    <div class="secthead"><h2>Threads 生成系統</h2><a class="tbin" href="https://bin-realty.github.io/threads-poster/" target="_blank" rel="noopener">打開 Threads-Bin</a></div>
+    <div class="secthead"><h2>Threads 生成系統</h2><div class="row"><button type="button" class="small" id="btn-pubsync">同步物件規格</button><a class="tbin" href="https://bin-realty.github.io/threads-poster/" target="_blank" rel="noopener">打開 Threads-Bin</a></div></div>
     <p class="hint">這裡只做一件事：想出一篇好文案、過合規檢查、送到 Threads-Bin。排程、發送、數據、刪文都在 Threads-Bin。</p>
     <div class="pseg" id="post-seg" role="tablist" aria-label="發脆分類">
       <button type="button" data-v="posts" aria-pressed="true">貼文</button>
@@ -329,18 +329,8 @@ body.nologin nav.tabs,body.nologin .pane{display:none!important}
       </div>
       <div class="ggrid" id="ggrid"></div>
     </section>
-    <section class="postable">
-      <div class="secthead"><h3>我的庫存物件</h3><button type="button" class="small" id="btn-pubsync">同步規格到 Threads-Bin</button></div>
-      <div id="pable-list" class="pl2"></div>
-    </section>
-    <section class="postable">
-      <div class="secthead"><h3>同事精選物件A</h3><button type="button" class="small primary" id="btn-addco">新增同事物件</button></div>
-      <p class="hint">發出去掛聖斌的名字，先確認同事有委託、屋主同意廣告、售價最新。點物件可以修改。</p>
-      <div id="co-list" class="pl2"></div>
-      <div id="co-clean" class="pl2"></div>
-    </section>
-    <section hidden style="display:flex;flex-direction:column;gap:8px">
-      <div class="secthead"><h3>進行中的草稿</h3><span class="hint">已發布的到 Threads-Bin 看</span></div>
+    <section style="display:flex;flex-direction:column;gap:8px">
+      <div class="secthead"><h3>Code 寫好的文案</h3><span class="hint">在 Claude Code 說「幫 L003 寫一篇脆」，寫好會出現在這裡</span></div>
       <div class="list" id="post-list"><div class="empty">正在讀取貼文…</div></div>
     </section>
     </div>
@@ -1254,21 +1244,11 @@ function renderPost(){
   $("#n-post").textContent=(pend+oc)||posts.filter(p=>p.status==="草稿").length||0;
   if(postView!=="posts") renderPostView();
   renderCo();
-  const pl=$("#pable-list"); pl.replaceChildren();
   const ok=listings.filter(postableOf);
-  if(!ok.length) pl.append(el("div","empty","目前沒有可以發的庫存物件（要委託中＋有 Google 相簿連結）。"));
-  ok.forEach(l=>{
-    const r=el("div","pable"), left=el("div","t");
-    left.append(el("span","code",l.code), el("span",null,l.community||l.projectName||l.addr||""), el("span","pr",l.ask||""));
-    const draft=posts.find(p=>p.listing===l.code&&["草稿","失敗"].includes(p.status));
-    const b=el("button",draft?"small":"small primary",draft?"打開草稿":"寫物件文"); b.type="button";
-    b.addEventListener("click",()=>openPost(draft||{listing:l.code,status:"草稿",text:"",reply:DEF_REPLY,pick:""}, !draft));
-    r.append(left,b); pl.append(r);
-  });
   const box=$("#post-list"); box.replaceChildren();
-  const rows=posts.filter(p=>!["已發布","已刪除","待刪除","已送發脆台"].includes(p.status)).sort((a,b)=>(PST_ORDER[a.status]??9)-(PST_ORDER[b.status]??9)||String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
+  const rows=posts.filter(p=>["草稿","失敗","送發脆台"].includes(p.status)).sort((a,b)=>(PST_ORDER[a.status]??9)-(PST_ORDER[b.status]??9)||String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
   const gsel=$("#g-listing"); if(gsel&&gsel.options.length!==ok.length+1){ const cv=gsel.value; gsel.replaceChildren(); const o0=el("option",null,"不綁物件"); o0.value=""; gsel.append(o0); ok.forEach(l=>{ const o=el("option",null,l.code+" "+(l.community||l.projectName||"")); o.value=l.code; gsel.append(o); }); gsel.value=cv; }
-  if(!rows.length){box.append(el("div","empty","沒有進行中的草稿。點上面任何一種類型開始。"));return;}
+  if(!rows.length){box.append(el("div","empty","目前沒有寫好的文案。到 Claude Code 說「幫 L003 寫一篇脆」或「寫一篇知識文：首購族最常踩的雷」，寫好會出現在這裡。"));return;}
   rows.forEach(p=>{
     const l=lstOf(p.listing), c=el("button","card"); c.type="button";
     const nm=el("div","name"); nm.append(el("span","code",p.listing||(p.ext?"同事":(p.genre||"知識"))), el("span",null,p.ext?coName(p.ext):!p.listing?(p.topic||String(p.text||"").split("\n")[0].slice(0,18)||"知識文"):(l&&(l.community||l.addr))||"（物件已刪除）"), el("span","pst s-"+p.status,p.status));
@@ -1283,6 +1263,13 @@ function renderPost(){
     if(p.status==="已送發脆台") meta.append(el("span",null,"已在發脆台，請到發脆台排程／發送"));
     if(p.status==="待刪除") meta.append(el("span","warn","物件已成交／下架，每天早上系統自動刪文"));
     c.append(meta);
+    const acts=el("div","row"); acts.style.gridColumn="1/-1"; acts.style.marginTop="6px";
+    const send=el("button","small primary","發到 Threads-Bin"); send.type="button";
+    send.addEventListener("click",async e=>{ e.stopPropagation(); if(!String(p.text||"").trim()){ toast("主文是空的，先點開來寫。"); return; } send.disabled=true; send.textContent="送出中…";
+      const okSend=await sendBin(p.id,"草稿"); if(okSend){ try{ await db.collection("posts").doc(p.id).update({status:"已送發脆台",updatedAt:new Date().toISOString()}); }catch(_){} toast("已送到 Threads-Bin「草稿」，到那邊確認、挑照片、排程。"); } else { toast("沒送出去："+fireErr); send.disabled=false; send.textContent="發到 Threads-Bin"; } });
+    const del=el("button","small danger","刪除"); del.type="button";
+    del.addEventListener("click",async e=>{ e.stopPropagation(); if(!del.classList.contains("armed")){ del.classList.add("armed"); toast("再按一次就會刪除這篇文案，不想刪就按別的地方。"); setTimeout(()=>del.classList.remove("armed"),4000); return; } del.disabled=true; try{ await db.collection("posts").doc(p.id).delete(); toast("已刪除這篇文案。"); }catch(_){ toast("刪除失敗，請再試一次。"); del.disabled=false; } });
+    acts.append(send,del); c.append(acts);
     c.addEventListener("click",()=>openPost(p,false));
     box.append(c);
   });
@@ -1422,7 +1409,7 @@ function openCo(c){
   const db2=$("#cobtn-del"); db2.hidden=!coEditing; db2.classList.remove("armed"); db2.textContent="刪除"; coMsg("");
   $("#dlg4").showModal();
 }
-$("#btn-addco").addEventListener("click",()=>openCo(null));
+$("#btn-addco")?.addEventListener("click",()=>openCo(null));
 $("#cobtn-cancel").addEventListener("click",()=>$("#dlg4").close());
 $("#coed").addEventListener("submit",async e=>{
   e.preventDefault(); if(!db){ coMsg("目前連不到資料庫，請重新整理頁面再試。",true); return; }
