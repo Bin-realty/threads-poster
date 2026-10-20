@@ -6,7 +6,7 @@
 ## 系統全貌（三塊）
 | 區塊 | 在哪裡 | 誰負責改 |
 |---|---|---|
-| 追蹤台（客戶、庫存、行程、Threads 文案） | 頁面：本 repo `docs/tracker.html`（https://bin-realty.github.io/threads-poster/tracker.html）。資料：**私人 repo `Bin-realty/realty-data`** 的 `data/<collection>/<id>.json`（本機 `C:\Users\GIGABYTE\realty-data`）。舊版 artifact `https://claude.ai/artifact/X1cGrdja16py9etPVRceza` 當備份；`tracker/index.html` 是舊版原始碼 | 全部 Code：改頁面 push 本 repo；改資料 push realty-data。搬家步驟見 realty-data 的 MIGRATION.md |
+| 追蹤台（客戶、庫存、行程、Threads 文案） | 頁面：本 repo `docs/tracker.html`（https://bin-realty.github.io/threads-poster/tracker.html）。資料：**私人 repo `Bin-realty/realty-data`** 的 `data/<collection>/<id>.json`（本機 `C:\Users\GIGABYTE\realty-system\realty-data`）。舊版 artifact `https://claude.ai/artifact/X1cGrdja16py9etPVRceza` 當備份；`tracker/index.html` 是舊版原始碼 | 全部 Code：改頁面 push 本 repo；改資料 push realty-data。搬家步驟見 realty-data 的 MIGRATION.md |
 | Threads-Bin（排程發 Threads 貼文） | `docs/index.html`（GitHub Pages：https://bin-realty.github.io/threads-poster/）＋ `scripts/*.py`（GitHub Actions） | Code 改完直接 push 到 main 就上線 |
 | 每日晨報、口述回報、Google 日曆、售資 PDF | Code 的排程任務（指示在 realty-data `docs/晨報指示.md`）＋Code 對話（口述回報直接改 realty-data 的 data/ 並 push；日曆用 Google Calendar 連接器） | Code |
 
