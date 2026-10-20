@@ -1,12 +1,14 @@
 {
  "active": true,
  "times": [
-  "10:31",
-  "13:30",
-  "17:30",
-  "20:30"
+  "13:31"
  ],
- "weekdays": [],
- "queue": [],
+ "weekdays": [
+  2,
+  5
+ ],
+ "queue": [
+  "ojgceu9nt8xcxnu4971m"
+ ],
  "cursor": 0
 }
