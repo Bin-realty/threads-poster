@@ -612,7 +612,7 @@ function renderCmts(){
 function renderDrafts(){
   const v=$("#v-drafts"); v.replaceChildren();
   const byU=(a,b)=>String(b.updatedAt||"").localeCompare(String(a.updatedAt||""));
-  const hd=el("div","row between"); const h=el("h2"); h.append("草稿"); hd.append(h); const nb=el("button","primary sm","＋ 新貼文"); nb.addEventListener("click",()=>openEd(null)); hd.append(nb); v.append(hd);
+  const hd=el("div","row between"); const h=el("h2"); h.append("草稿"); hd.append(h); v.append(hd);
   v.append(el("p","hint","寫好、挑照片 → 按「確認，可以發了」→ 到「排程」勾選、選時間、按「開始排程發文」。確認後就不能改；要改就在排程那邊「取消」退回來。"));
   const group=(title,arr,hint)=>{ if(!arr.length) return; const h=el("h2"); h.append(title, el("small",null,arr.length+" 篇")); v.append(h); if(hint) v.append(el("p","hint",hint)); const l=el("div","list"); arr.forEach(d=>l.append(card(d))); v.append(l); };
   group("需要處理", S.drafts.filter(d=>d.status==="失敗").sort(byU), "上次沒發成功，打開看原因，改好再確認。");
@@ -620,7 +620,7 @@ function renderDrafts(){
   group("草稿", S.drafts.filter(d=>d.status==="草稿"&&!d.library).sort(byU));
   const lib=S.drafts.filter(d=>d.library&&d.status==="草稿").sort(byU);
   if(lib.length){ const dt=el("details","lib"); const sm=el("summary"); const h2=el("h2"); h2.append("文案庫", el("small",null,lib.length+" 篇・可重複排程")); sm.append(h2); dt.append(sm); const l=el("div","list"); lib.forEach(d=>l.append(card(d))); dt.append(l); v.append(dt); }
-  if(!S.drafts.some(d=>["草稿","待排","失敗"].includes(d.status)&&!d.library)){ const e=el("div","empty"); e.append(el("b",null,"沒有進行中的草稿"),"按「＋ 新貼文」自己寫，或在追蹤台用 AI 寫好按「送到 Threads-Bin」，會出現在這裡。"); v.append(e); }
+  if(!S.drafts.some(d=>["草稿","待排","失敗"].includes(d.status)&&!d.library)){ const e=el("div","empty"); e.append(el("b",null,"沒有進行中的草稿"),"按右上「＋ 新貼文」自己寫，或在追蹤台用 AI 寫好按「送到 Threads-Bin」，會出現在這裡。"); v.append(e); }
 }
 
 /* ---------- upload ---------- */
