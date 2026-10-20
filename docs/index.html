@@ -381,6 +381,7 @@ function statOf(d){ if(!S.stats||!S.stats.posts) return null; return Object.valu
 const eng=s=>(s.likes||0)+3*(s.replies||0)+2*((s.reposts||0)+(s.quotes||0)+(s.shares||0));
 const score=s=>{const v=s.views||0; return Math.round(v*(1+20*(v?eng(s)/v:0)));};
 function render(){
+  $("#btn-new").hidden=view!=="drafts";
   const oc=openCmts().length; $("#n-cmts").textContent=oc?String(oc):"";
   const pc=S.drafts.filter(d=>["待發","處理中","失敗","刪除中"].includes(d.status)).length; $("#n-posts").textContent=pc?String(pc):"";
   const dc=S.drafts.filter(d=>["草稿","待排","失敗"].includes(d.status)&&!d.library).length; $("#n-drafts").textContent=dc?String(dc):"";
@@ -427,7 +428,7 @@ function renderPosts(){
   if(bulk&&bulkSel.size){ const bar=el("div","bulkbar"); bar.append(el("span",null,"已選 "+bulkSel.size+" 篇")); const b=el("button","danger solid sm","從 Threads 刪除所選"); b.addEventListener("click",()=>bulkDelete()); bar.append(b); v.append(bar); }
   const del=S.drafts.filter(d=>d.status==="已刪除").sort(byT).reverse();
   if(del.length){ const dt=el("details","lib"); const sm=el("summary"); const h=el("h2"); h.append("已刪除", el("small",null,del.length+" 篇")); sm.append(h); dt.append(sm); const l=el("div","list"); del.slice(0,30).forEach(d=>l.append(card(d))); dt.append(l); v.append(dt); }
-  if(!S.drafts.length){ const e=el("div","empty"); e.append(el("b",null,"還沒有貼文"),"按右上「＋ 新貼文」開始，或在追蹤台寫好文案按「送到 Threads-Bin」。"); v.append(e); }
+  if(!S.drafts.length){ const e=el("div","empty"); e.append(el("b",null,"還沒有貼文"),"到「草稿」按「＋ 新貼文」開始，或在追蹤台寫好文案按「送到 Threads-Bin」。"); v.append(e); }
   const nd=S.drafts.filter(d=>["草稿","待排"].includes(d.status)&&!d.library).length; if(nd) v.append(el("p","hint","還有 "+nd+" 篇在「草稿」分頁：寫好按「確認」，再到「排程」排時間。"));
 }
 async function markDelete(ids){
