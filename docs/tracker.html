@@ -312,7 +312,7 @@ body.nologin nav.tabs,body.nologin .pane{display:none!important}
 
   <div class="pane" id="pane-post" hidden>
     <div class="secthead"><h2>Threads 生成系統</h2><div class="row"><button type="button" class="small" id="btn-pubsync">同步物件規格</button><a class="tbin" href="https://bin-realty.github.io/threads-poster/" target="_blank" rel="noopener">打開 Threads-Bin</a></div></div>
-    <p class="hint">這裡只做一件事：想出一篇好文案、過合規檢查、送到 Threads-Bin。排程、發送、數據、刪文都在 Threads-Bin。</p>
+    <p class="hint">文案在 Claude Code 寫好會出現在下面，按「發到 Threads-Bin」再到那邊挑照片、排程。排程、發送、數據、刪文都在 Threads-Bin。</p>
     <div class="pseg" id="post-seg" role="tablist" aria-label="發脆分類">
       <button type="button" data-v="posts" aria-pressed="true">貼文</button>
       <button type="button" data-v="cmts" aria-pressed="false">留言待回 <small id="n-cmt"></small></button>
@@ -321,14 +321,6 @@ body.nologin nav.tabs,body.nologin .pane{display:none!important}
     <div id="pv-stats" hidden style="display:flex;flex-direction:column;gap:10px"></div>
     <div id="pv-cmts" hidden style="display:flex;flex-direction:column;gap:8px"></div>
     <div id="pv-posts" style="display:flex;flex-direction:column;gap:14px">
-    <section class="gen">
-      <div class="secthead"><h3>一鍵深度思考</h3><span class="hint">點一種類型，AI 先想三個角度再寫最好的一版</span></div>
-      <div class="genseed">
-        <label class="field" style="flex:1"><span>素材或主題（可空白）</span><input id="g-seed" placeholder="例：今天帶看，太太在陽台站了兩分鐘沒說話"></label>
-        <label class="field" style="width:min(220px,100%)"><span>綁物件（可空白）</span><select id="g-listing"><option value="">不綁物件</option></select></label>
-      </div>
-      <div class="ggrid" id="ggrid"></div>
-    </section>
     <section style="display:flex;flex-direction:column;gap:8px">
       <div class="secthead"><h3>Code 寫好的文案</h3><span class="hint">在 Claude Code 說「幫 L003 寫一篇脆」，寫好會出現在這裡</span></div>
       <div class="list" id="post-list"><div class="empty">正在讀取貼文…</div></div>
