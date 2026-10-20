@@ -1778,7 +1778,7 @@ async function savePost(status,extra){
   const now=new Date().toISOString();
   const body={hook:pHook||"",genre:pGenre||"",topic:(pKnow||pGenre)?(pTopic||$("#p-topic").value.trim()):"",listing:pKnow?"":(pListing?pListing.code:(pEditing&&pEditing.listing)||""),text:$("#p-text").value.trim(),reply:$("#p-reply").value.trim(),pick:$("#p-pick").value.trim(),status,updatedAt:now};
   if(status==="待發"||status==="已排程") body.error="";
-  if(pCo) body.ext={coId:pCo.id||"",name:coName(pCo),ask:pCo.ask||"",agent:[pCo.agent,pCo.agentPhone].filter(kn).join(" "),spec:specCo(pCo)};
+  if(pCo) body.ext={coId:pCo.id||"",name:coName(pCo),ask:pCo.ask||"",agent:kn(pCo.agent)?pCo.agent:"",spec:specCo(pCo)};
   if(extra) Object.assign(body,extra);
   try{
     if(pEditing){ await db.collection("posts").doc(pEditing.id).update(body); return pEditing.id; }

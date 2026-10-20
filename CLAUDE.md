@@ -19,9 +19,10 @@
 - 狀態流程：草稿（可改）→「確認，可以發了」→ **待排**（鎖定）→ 排程分頁勾選、選時間、「開始排程發文」→ 已排程（鎖定，「取消」退回草稿）→ 待發 → 處理中 → 已發布 → 刪除中 → 已刪除。失敗 → 回草稿分頁「需要處理」。
 - 排程分頁由上到下：現在運行（自動循環可多組，每組各自停止／重新啟動／刪除；已排程單次）→ 已確認文案（複選）→ 選時間＋發文方式（只發一次／自動循環發文，每按一次「開始自動循環」就新增一組）。草稿視窗不排程。
 - schedule.json：`{plans:[{id:"p1",name,active,times,weekdays,queue,cursor}], fired:{"p1@YYYY-MM-DDTHH:MM": 草稿id}}`；舊的單組格式頁面和 queue.py 讀到都會自動轉成 p1。循環發出的草稿 id＝`R`+時間（p1 以外再加組 id）。
+- 自動循環：`schedule.json` 只有頁面寫（plans）；機器人的紀錄（fired、cursor）在 `schedule_state.json`，只有 queue.py 寫。時段過後 120 分鐘內都算（GitHub 排程實際 40–60 分鐘才跑一次），一輪一組只發一篇；退回草稿的文不發。
 - 草稿編輯器：文案、上傳照片、貼 Google 相簿連結同步（寫 `sync/<slug>`）、點照片排順序（先點＝封面）。
 - 後端：`scripts/queue.py` 只處理 待發／已排程／刪除中／輪播；`threads.py` 發文、刪文、同步相簿、抓數據與留言。`drafts/<id>.json` 是每篇貼文；`listings/<slug>/album|thumbs` 是照片；`data/listings.json` 是追蹤台同步過來的物件規格（不含屋主、底價、門牌號）。
-- 同事物件：草稿 `ext {coId,name,ask,agent,spec}`、`listing` 空字串；72 小時防洗版不擋同事物件。
+- 同事物件：草稿 `ext {coId,name,ask,agent,spec}`、`listing` 空字串；72 小時防洗版：同一物件（listing）或同一篇文（from_id／id）都擋；同事物件只擋同一篇。ext.agent 只放名字不放電話（公開 repo）。
 - 登入：頁面用使用者自己貼的 GitHub fine-grained token（threads-poster＋realty-data 的 Contents 讀寫），存瀏覽器 localStorage `fct_pat`（追蹤台同網域共用）。**Code 不要碰、不要印任何 token**（`token.enc`、Secrets、`fct_pat`）。
 
 ## 追蹤台（docs/tracker.html；照 tracker/index.html 原樣，只換資料層）

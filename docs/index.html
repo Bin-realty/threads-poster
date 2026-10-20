@@ -287,7 +287,7 @@ details.chk[open] summary{margin-bottom:8px}
     <label class="field"><span>標題（只給自己看，不會發出去）</span><input id="ed-topic" placeholder="例：大毅讚幸福 樹海版"></label>
     <label class="field"><span>這篇是哪個物件的？（選了就能一鍵帶入規格和照片；純知識文選「不是物件文」）</span><select id="ed-listing"></select></label>
     <div id="ed-ext" class="field" hidden style="background:var(--soft);border-radius:12px;padding:10px 12px;gap:8px">
-      <div class="row"><label class="field" style="flex:2;min-width:140px"><span>物件名稱</span><input id="ext-name" placeholder="例：惠宇仰德"></label><label class="field" style="flex:1;min-width:100px"><span>售價</span><input id="ext-ask" placeholder="例：4,988萬"></label><label class="field" style="flex:1;min-width:100px"><span>同事（自己記）</span><input id="ext-agent" placeholder="例：阿正"></label></div>
+      <div class="row"><label class="field" style="flex:2;min-width:140px"><span>物件名稱</span><input id="ext-name" placeholder="例：惠宇仰德"></label><label class="field" style="flex:1;min-width:100px"><span>售價</span><input id="ext-ask" placeholder="例：4,988萬"></label><label class="field" style="flex:1;min-width:100px"><span>同事（自己記）</span><input id="ext-agent" placeholder="只填名字，不填電話"></label></div>
       <label class="field"><span>規格（照這個格式填，沒有的行刪掉；地址只到路名）</span><textarea id="ext-spec" rows="7">┃地址：台中市○○區○○路
 ┃格局：
 ┃建坪：（含車位）
@@ -358,14 +358,14 @@ const nowT=()=>tpe(new Date().toISOString());
 const todayKey=()=>dk(nowT());
 const newId=(p)=>{const t=nowT(); return (p||"D")+t.toISOString().slice(0,16).replace(/\D/g,"")+Math.random().toString(36).slice(2,5);};
 const firstLine=d=>String(d.text||"").split("\n").find(x=>x.trim())||"（主文空白）";
-const label=d=>{const L=lst(d.listing); return d.listing?(d.listing+" "+((L&&L.name)||d.topic||"")):(d.ext&&d.ext.name?d.ext.name+(d.ext.agent?"（"+d.ext.agent+"）":""):(d.topic||"知識文"));};
+const label=d=>{const L=lst(d.listing); return d.listing?(d.listing+" "+((L&&L.name)||d.topic||"")):(d.ext&&d.ext.name?d.ext.name+(d.ext.agent?"（"+String(d.ext.agent).replace(/[\d\-\s()（）]{6,}/g,"").trim()+"）":""):(d.topic||"知識文"));};
 const WD="日一二三四五六";
 
 async function loadAll(){
   $("#sync").textContent="讀取中…";
   const tr=await gh("/git/trees/main?recursive=1"); S.tree=(tr&&tr.tree||[]).map(x=>x.path);
-  const [L,st,cm,rl,hk,sc]=await Promise.all([getJSON("data/listings.json",{listings:[]}),getJSON("stats.json",null),getJSON("comments.json",null),getJSON("reply_log.json",{}),getJSON("config/hooks.json",[]),getJSON("schedule.json",null)]);
-  S.listings=(L.data&&L.data.listings)||[]; S.stats=st.data; S.comments=cm.data; S.rlog=rl.data||{}; S.hooks=hk.data||[]; S.sched=normSched(sc.data); S.schedSha=sc.sha;
+  const [L,st,cm,rl,hk,sc,ss]=await Promise.all([getJSON("data/listings.json",{listings:[]}),getJSON("stats.json",null),getJSON("comments.json",null),getJSON("reply_log.json",{}),getJSON("config/hooks.json",[]),getJSON("schedule.json",null),getJSON("schedule_state.json",null)]);
+  S.listings=(L.data&&L.data.listings)||[]; S.stats=st.data; S.comments=cm.data; S.rlog=rl.data||{}; S.hooks=hk.data||[]; S.sched=normSched(sc.data); S.schedSha=sc.sha; if(ss.data){ Object.assign(S.sched.fired,ss.data.fired||{}); S.sched.plans.forEach(p=>{ const c=(ss.data.cursor||{})[p.id]; if(c!=null) p.cursor=c; }); }
   S.handled=new Set(S.tree.filter(p=>p.startsWith("handled/")).map(p=>p.slice(8).replace(/\.txt$/,"")));
   S.thumbs={}; S.tree.forEach(p=>{const m=p.match(/^listings\/([^/]+)\/thumbs\/(\d+)\.jpg$/); if(m)(S.thumbs[m[1]]=S.thumbs[m[1]]||[]).push(p);}); Object.values(S.thumbs).forEach(a=>a.sort());
   const dp=S.tree.filter(p=>/^drafts\/[^/]+\.json$/.test(p));
@@ -455,7 +455,7 @@ function normSched(s){
   const p={id:"p1",name:"循環 1",active:!!s.active,times:s.times||[],weekdays:s.weekdays||[],queue:s.queue||[],cursor:s.cursor||0};
   return {plans:p.queue.length?[p]:[],fired};
 }
-async function saveSched(msg){ const r=await putJSON("schedule.json",S.sched,S.schedSha,"輪播設定"); S.schedSha=r&&r.content&&r.content.sha; if(msg) toast(msg); }
+async function saveSched(msg){ const body={plans:S.sched.plans.map(p=>{ const o=Object.assign({},p); delete o.cursor; return o; })}; const r=await putJSON("schedule.json",body,S.schedSha,"輪播設定"); S.schedSha=r&&r.content&&r.content.sha; if(msg) toast(msg); }
 function renderPlan(){
   const v=$("#v-plan"); v.replaceChildren();
   if(!planDay||planDay<todayKey()) planDay=todayKey();
@@ -476,7 +476,7 @@ function renderPlan(){
     const del=el("button","sm quiet","刪除這組"); del.title="刪掉這組循環設定（文案不會被刪）"; del.addEventListener("click",async()=>{ if(!del.classList.contains("armed")){ del.classList.add("armed"); toast("再按一次就會刪除這組循環（文案不會被刪）。"); return; } del.disabled=true; const old=R.plans; R.plans=R.plans.filter(x=>x!==p); try{ await saveSched("已刪除「"+(p.name||"這組")+"」"); }catch(e){ R.plans=old; toast("沒成功："+e.message); } renderPlan(); }); btns.append(del);
     hr.append(btns); card.append(hr);
     card.append(el("p","hint",wdText(p.weekdays)+" "+(p.times.join("、")||"（沒有時間）")+"，"+rq.length+" 篇輪流發；同一物件 72 小時內不重發。"));
-    const ql=el("div","queue"); rq.forEach((d,i)=>{ const r=el("div","q"); r.append(el("b",null,String(i+1)), el("span",null,label(d)+"・"+firstLine(d))); const rm=el("button","sm quiet","移除"); rm.addEventListener("click",async()=>{ rm.disabled=true; const old=p.queue, oldPlans=R.plans; p.queue=p.queue.filter(x=>x!==d.id); if(!p.queue.length) R.plans=R.plans.filter(x=>x!==p); try{ await saveSched(p.queue.length?"已從這組移除":"這組沒有文案了，已一起刪掉"); }catch(e){ p.queue=old; R.plans=oldPlans; toast("沒成功："+e.message); } renderPlan(); }); r.append(rm); ql.append(r); }); card.append(ql);
+    const ql=el("div","queue"); rq.forEach((d,i)=>{ const r=el("div","q"); const okSt=["待排","已發布"].includes(d.status)||d.library; r.append(el("b",null,String(i+1)), el("span",null,label(d)+"・"+firstLine(d))); if(!okSt){ const w=el("span","st s-失敗","已退回草稿，不會發"); w.style.flex="none"; r.append(w); } const rm=el("button","sm quiet","移除"); rm.addEventListener("click",async()=>{ rm.disabled=true; const old=p.queue, oldPlans=R.plans; p.queue=p.queue.filter(x=>x!==d.id); if(!p.queue.length) R.plans=R.plans.filter(x=>x!==p); try{ await saveSched(p.queue.length?"已從這組移除":"這組沒有文案了，已一起刪掉"); }catch(e){ p.queue=old; R.plans=oldPlans; toast("沒成功："+e.message); } renderPlan(); }); r.append(rm); ql.append(r); }); card.append(ql);
     if(running){ const up=el("div","preview"); up.append(el("span",null,"接下來會發：")); rotUpcoming(p,3,R.fired).forEach(x=>{ const r=el("span"); r.append(el("b",null,md(x.t)+"（"+WD[x.t.getUTCDay()]+"）"+hm(x.t)),"　"+label(x.d)+"・"+firstLine(x.d).slice(0,14)); up.append(r); }); card.append(up); }
     top.append(card);
   });
@@ -533,7 +533,7 @@ async function scheduleCopy(d,t){
   else { const body=Object.fromEntries(Object.entries(d).filter(([k])=>!k.startsWith("_"))); Object.assign(body,{status:"已排程",scheduledAt:iso,updatedAt:new Date().toISOString(),error:""}); await putJSON(d._path,body,d._sha,"排程 "+d.id); }
 }
 function rotUpcoming(s,max,fired){
-  const q=(s.queue||[]).map(id=>S.drafts.find(d=>d.id===id)).filter(Boolean), times=(s.times||[]).slice().sort(), wds=(s.weekdays&&s.weekdays.length)?s.weekdays:[1,2,3,4,5,6,7], out=[];
+  const q=(s.queue||[]).map(id=>S.drafts.find(d=>d.id===id)).filter(d=>d&&(["待排","已發布"].includes(d.status)||d.library)), times=(s.times||[]).slice().sort(), wds=(s.weekdays&&s.weekdays.length)?s.weekdays:[1,2,3,4,5,6,7], out=[];
   if(!q.length||!times.length) return out;
   let c=(s.cursor||0)%q.length; const nowT=Date.now()+8*3600e3, base=new Date(nowT); base.setUTCHours(0,0,0,0);
   for(let dd=0;dd<14&&out.length<max;dd++){ const day=new Date(base.getTime()+dd*864e5); if(!wds.includes(day.getUTCDay()||7)) continue;
@@ -570,7 +570,8 @@ function lineChart(pts){
 }
 function renderStats(){
   const v=$("#v-stats"); v.replaceChildren();
-  if(!S.stats||!S.stats.posts||!Object.keys(S.stats.posts).length){ const e=el("div","empty"); e.append(el("b",null,"還沒有數據"),"每天早上 6:23 自動抓一次，剛發的貼文隔天才看得到。"); v.append(e); return; }
+  const serr=(S.stats&&S.stats.errors)||[]; if(serr.length){ const blocked=serr.some(x=>/access blocked|permission|scope/i.test(x)); const m=el("div","msg err"); m.style.margin="0 0 10px"; m.textContent=blocked?"抓數據被 Threads 擋下（API access blocked）：鑰匙沒有「數據 insights」權限。到 Meta 開發者後台把 threads_manage_insights 權限加進 App，再重新授權一次。":"有 "+serr.length+" 篇數據抓失敗："+serr[0].slice(0,80); v.append(m); }
+  if(!S.stats||!S.stats.posts||!Object.keys(S.stats.posts).length){ const e=el("div","empty"); e.append(el("b",null,"還沒有數據"),serr.length?"上面的問題解決後，隔天早上 6:23 會自動抓。":"每天早上 6:23 自動抓一次，剛發的貼文隔天才看得到。"); v.append(e); return; }
   const items=Object.entries(S.stats.posts).map(([pid,s])=>({pid,s,d:S.drafts.find(d=>d.id===s.tracker_id)||null,t:tpe(s.posted_at)})).filter(x=>x.t).sort((a,b)=>a.t-b.t);
   const sum=a=>a.reduce((n,x)=>n+(x.s.views||0),0), engS=a=>a.reduce((n,x)=>n+eng(x.s),0);
   const V=sum(items), E=engS(items), now=nowT(), d7=new Date(now.getTime()-7*864e5), d14=new Date(now.getTime()-14*864e5);
@@ -606,8 +607,8 @@ function openCmts(){ return ((S.comments&&S.comments.items)||[]).filter(c=>!c.an
 function renderCmts(){
   const v=$("#v-cmts"); v.replaceChildren();
   const op=openCmts().sort((a,b)=>String(b.timestamp).localeCompare(String(a.timestamp)));
-  const h=el("h2"); h.append("待回", el("small",null,S.comments?"每 15 分鐘更新・最近 "+fmt(S.comments.updated_at):"")); v.append(h);
-  if(!op.length){ const e=el("div","empty"); e.append(el("b",null,"沒有待回的留言"),"新留言每 15 分鐘抓一次。自動回覆目前關閉，每一則都由你決定。"); v.append(e); return; }
+  const h=el("h2"); h.append("待回", el("small",null,S.comments?"約每小時檢查・最近一次有新留言 "+fmt(S.comments.updated_at):"")); v.append(h);
+  if(!op.length){ const e=el("div","empty"); e.append(el("b",null,"沒有待回的留言"),"新留言約每小時抓一次。自動回覆目前關閉，每一則都由你決定。"); v.append(e); return; }
   const l=el("div","list");
   op.forEach(c=>{
     const d=el("div","cmt"), who=el("div","who"); who.append(el("b",null,"@"+c.username), el("time",null,fmt(c.timestamp)), el("span",null,String(c.slug||"").startsWith("k-")?"知識文":String(c.slug||"").toUpperCase()+" 貼文"));
@@ -672,8 +673,8 @@ upIn.addEventListener("change",async()=>{
 
 /* ---------- editor ---------- */
 function parsePick(v,max){const o=[];String(v||"").replace(/，/g,",").split(",").map(x=>x.trim()).filter(Boolean).forEach(x=>{const m=x.match(/^(\d+)\s*-\s*(\d+)$/); if(m){let a=+m[1],b=+m[2],s=a<=b?1:-1; for(let i=a;s>0?i<=b:i>=b;i+=s)o.push(i);} else if(/^\d+$/.test(x)) o.push(+x);}); return [...new Set(o)].filter(n=>n>=1&&(!max||n<=max));}
-function fillListingSel(sel){ const s=$("#ed-listing"); s.replaceChildren(); const o=el("option",null,"不是物件文（知識文、故事、純文字）"); o.value=""; s.append(o); S.listings.forEach(L=>{const x=el("option",null,L.code+" "+(L.name||"")); x.value=L.code; s.append(x);}); const ox=el("option",null,"＋ 其他物件（同事的、不在追蹤台的）"); ox.value="__ext"; s.append(ox); if(sel&&sel!=="__ext"&&!S.listings.some(L=>L.code===sel)){const x=el("option",null,sel+"（未同步）"); x.value=sel; s.append(x);} s.value=sel||""; }
-function extOf(){ return $("#ed-listing").value==="__ext"?{name:$("#ext-name").value.trim(),ask:$("#ext-ask").value.trim(),agent:$("#ext-agent").value.trim(),spec:$("#ext-spec").value.split("\n").filter(l=>!/^┃[^：]+：\s*(（含車位）|約)?\s*$/.test(l)).join("\n").trim()}:null; }
+function fillListingSel(sel){ const s=$("#ed-listing"); s.replaceChildren(); const o=el("option",null,"不是物件文（知識文、故事、純文字）"); o.value=""; s.append(o); S.listings.slice().sort((a,b)=>String(a.code).localeCompare(String(b.code),undefined,{numeric:true})).forEach(L=>{const x=el("option",null,L.code+" "+(L.name||"")); x.value=L.code; s.append(x);}); const ox=el("option",null,"＋ 其他物件（同事的、不在追蹤台的）"); ox.value="__ext"; s.append(ox); if(sel&&sel!=="__ext"&&!S.listings.some(L=>L.code===sel)){const x=el("option",null,sel+"（未同步）"); x.value=sel; s.append(x);} s.value=sel||""; }
+function extOf(){ return $("#ed-listing").value==="__ext"?{name:$("#ext-name").value.trim(),ask:$("#ext-ask").value.trim(),agent:$("#ext-agent").value.replace(/[\d\-\s()（）]{6,}/g,"").trim(),spec:$("#ext-spec").value.split("\n").filter(l=>!/^┃[^：]+：\s*(（含車位）|約)?\s*$/.test(l)).join("\n").trim()}:null; }
 function syncExt(){ $("#ed-ext").hidden=$("#ed-listing").value!=="__ext"; }
 let edId=null;
 function albumSlug(){ const code=$("#ed-listing").value; return (code&&code!=="__ext")?code.toLowerCase():(cur&&cur.album)||("k-"+String(edId).toLowerCase()); }
@@ -719,7 +720,7 @@ function edChecks(){
   if(!t.trim()) add("bad","主文是空的");
   t.length>500?add("bad","主文 "+t.length+" 字，超過 500"):add("ok","主文 "+t.length+" 字");
   if(r.length>500) add("bad","留言超過 500 字");
-  (/台灣房屋/.test(t)&&/尚峰不動產/.test(t))?add("ok","有經紀業標示"):add("bad","缺經紀業標示 → 按「只插入署名」");
+  (/台灣房屋/.test(t)&&/尚峰不動產/.test(t))?add("ok","有經紀業標示"):add("bad","缺經紀業標示 → 按「只加署名」");
   /蘇聖斌/.test(t)?add("ok","有署名"):add("bad","沒有署名「蘇聖斌」");
   (/林建宏/.test(t)&&/00667/.test(t)&&/416424/.test(t))?add("ok","有證號"):add("bad","缺經紀人、營業員證號");
   /阿斌|小蘇/.test(t+r)?add("bad","出現綽號，一律用蘇聖斌"):null;
@@ -734,6 +735,7 @@ function edChecks(){
   /line\.me\/R\/ti\/p\/@a0888/.test(r)?add("ok","留言有官方 LINE"):add("warn","留言沒有官方 LINE 連結");
   /line\.me|https?:\/\//.test(t)?add("warn","主文有連結，可能降低曝光"):null;
   if(code){ const last=S.drafts.filter(d=>d.listing===code&&d.status==="已發布"&&(!cur||d.id!==cur.id)).map(d=>d.postedAt).sort().pop(); if(last&&Date.now()-new Date(last).getTime()<72*3600e3) add("warn","這個物件 3 天內發過，系統會擋"); }
+  if(cur){ const sid=cur.from_id||cur.id, last2=S.drafts.filter(d=>(d.from_id||d.id)===sid&&d.status==="已發布"&&d.id!==cur.id).map(d=>d.postedAt).sort().pop(); if(last2&&Date.now()-new Date(last2).getTime()<72*3600e3) add("warn","這篇 3 天內發過，系統會擋"); }
   const ul=$("#ed-checks"); ul.replaceChildren(); out.forEach(([a,b])=>ul.append(el("li",a,(a==="ok"?"✓ ":a==="bad"?"✗ ":"⚠ ")+b)));
   const nb=out.filter(x=>x[0]==="bad").length, nw=out.filter(x=>x[0]==="warn").length;
   const sum=$("#ed-chksum"); sum.replaceChildren(); sum.append(el("span","st "+(nb?"s-失敗":nw?"s-已排程":"s-已發布"),nb?nb+" 項要改":nw?"可以發，"+nw+" 項提醒":"檢查通過")); $("#ed-chk").open=nb>0;

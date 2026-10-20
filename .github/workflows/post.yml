@@ -40,11 +40,12 @@ jobs:
           if ls sync/* >/dev/null 2>&1; then pip install -q pillow; python3 scripts/threads.py sync; fi
           python3 scripts/threads.py import
           git config user.name "threads-bot"
+          push_retry(){ for i in 1 2 3; do git pull --rebase -X theirs -q && git push -q && return 0; git rebase --abort 2>/dev/null || true; sleep $((i*5)); done; echo "::error::推不上去"; return 1; }
           git config user.email "threads-bot@users.noreply.github.com"
-          git add -A listings sync drafts publish delete schedule.json 2>/dev/null || git add -A listings sync drafts publish delete
+          git add -A listings sync drafts publish delete; if [ -f schedule_state.json ]; then git add schedule_state.json; fi
           if ! git diff --cached --quiet; then
             git commit -q -m "匯入相簿照片 $(TZ=Asia/Taipei date '+%F %R')"
-            git pull --rebase -q && git push -q
+            push_retry
           fi
           echo "PHOTO_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - name: 發文
@@ -59,8 +60,9 @@ jobs:
         if: always()
         run: |
           git config user.name "threads-bot"
+          push_retry(){ for i in 1 2 3; do git pull --rebase -X theirs -q && git push -q && return 0; git rebase --abort 2>/dev/null || true; sleep $((i*5)); done; echo "::error::推不上去"; return 1; }
           git config user.email "threads-bot@users.noreply.github.com"
           python3 scripts/queue.py settle || true
-          git add -A listings publish delete sync outbox drafts; if [ -f schedule.json ]; then git add schedule.json; fi; for f in comments.json reply_log.json; do if [ -f $f ]; then git add $f; fi; done
+          git add -A listings publish delete sync outbox drafts; if [ -f schedule_state.json ]; then git add schedule_state.json; fi; for f in comments.json reply_log.json; do if [ -f $f ]; then git add $f; fi; done
           git diff --cached --quiet || git commit -m "發文紀錄 $(TZ=Asia/Taipei date '+%F %R')"
-          git pull --rebase -q && git push -q
+          push_retry
