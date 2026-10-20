@@ -1,7 +1,78 @@
 {
- "updated_at": "2026-10-20T06:52:43+08:00",
- "posts": {},
- "errors": [
-  "18194369503395625: Threads API 錯誤 400：{\"error\":{\"message\":\"API access blocked.\",\"code\":200,\"type\":\"OAuthException\",\"fbtrace_id\":\"AI1obXbsIi"
- ]
+ "updated_at": "2026-10-21T06:53:17+08:00",
+ "posts": {
+  "18051541406819524": {
+   "views": 97,
+   "likes": 0,
+   "replies": 1,
+   "reposts": 0,
+   "quotes": 0,
+   "shares": 0,
+   "tracker_id": "R202610201402",
+   "slug": "k-r202610201402",
+   "posted_at": "2026-10-20T14:02:24+08:00",
+   "permalink": "https://www.threads.com/@a0958810178/post/DetJG85FSiM"
+  },
+  "18098106158540169": {
+   "views": 114,
+   "likes": 0,
+   "replies": 1,
+   "reposts": 0,
+   "quotes": 0,
+   "shares": 0,
+   "tracker_id": "R202610201402p2",
+   "slug": "k-r202610201402p2",
+   "posted_at": "2026-10-20T14:31:45+08:00",
+   "permalink": "https://www.threads.com/@a0958810178/post/DetMd7VFaxE"
+  },
+  "18119266762989193": {
+   "views": 112,
+   "likes": 0,
+   "replies": 1,
+   "reposts": 0,
+   "quotes": 0,
+   "shares": 0,
+   "tracker_id": "R202610201440p2",
+   "slug": "k-r202610201440p2",
+   "posted_at": "2026-10-20T15:26:16+08:00",
+   "permalink": "https://www.threads.com/@a0958810178/post/DetSt1QlpIj"
+  },
+  "18166065805471139": {
+   "views": 100,
+   "likes": 0,
+   "replies": 1,
+   "reposts": 0,
+   "quotes": 0,
+   "shares": 0,
+   "tracker_id": "R202610201500p3",
+   "slug": "k-r202610201500p3",
+   "posted_at": "2026-10-20T15:27:13+08:00",
+   "permalink": "https://www.threads.com/@a0958810178/post/DetS06EFozN"
+  },
+  "18194369503395625": {
+   "views": 104,
+   "likes": 1,
+   "replies": 6,
+   "reposts": 0,
+   "quotes": 0,
+   "shares": 0,
+   "tracker_id": "P20261019-L001",
+   "slug": "l001",
+   "posted_at": "2026-10-19T16:16:14+08:00",
+   "permalink": "https://www.threads.com/@a0958810178/post/DeqzoaXFpWK"
+  },
+  "18094389329461719": {
+   "views": 90,
+   "likes": 2,
+   "replies": 2,
+   "reposts": 0,
+   "quotes": 0,
+   "shares": 0,
+   "tracker_id": "R202610202240p4",
+   "slug": "l014",
+   "posted_at": "2026-10-20T22:58:56+08:00",
+   "permalink": "https://www.threads.com/@a0958810178/post/DeuGg1MFhaZ"
+  }
+ },
+ "errors": []
 }
