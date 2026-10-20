@@ -247,11 +247,11 @@ body.nologin nav.tabs,body.nologin .pane{display:none!important}
   </section>
 
   <section class="capture">
-    <label for="quick">一句話回報</label>
-    <textarea id="quick" placeholder="例：劉小姐今天電話聯絡了，女兒週末才有空，週日下午想看北屯電梯別墅"></textarea>
-    <p class="hint">打字或用手機鍵盤語音都可以。按「整理」後會先打開客戶卡給你確認，改到需求的欄位會標出來，不會直接存。</p>
+    <label for="quick" hidden>一句話回報</label>
+    <textarea id="quick" hidden></textarea>
+    <p class="hint">口述回報、要 AI 建議或寫文案，都到 Claude Code 跟我說，我直接記進追蹤台。</p>
     <div class="row">
-      <button class="primary" id="btn-parse">整理</button>
+      <button class="primary" id="btn-parse" hidden>整理</button>
       <button id="btn-manual">手動新增客戶</button>
       <span class="msg" id="cap-msg" role="status"></span>
     </div>
@@ -333,7 +333,7 @@ body.nologin nav.tabs,body.nologin .pane{display:none!important}
   <form class="ed" id="ped">
     <h2 id="ped-title">貼文</h2>
     <div id="p-src" class="hint"></div>
-    <div class="ai">
+    <div class="ai" hidden>
       <div class="row" style="justify-content:space-between">
         <span class="hint" id="pai-hint">用庫存資料寫一版文案（會蓋掉主文，改好再存）</span>
         <input id="p-topic" placeholder="主題（可空白，例：首購族最常踩的雷）" hidden style="flex:1;min-width:160px">
@@ -407,7 +407,7 @@ body.nologin nav.tabs,body.nologin .pane{display:none!important}
 <dialog id="dlg">
   <form class="ed" id="ed">
     <h2 id="ed-title">客戶卡</h2>
-    <div class="ai" id="ai-box">
+    <div class="ai" id="ai-box" hidden>
       <div class="row" style="justify-content:space-between">
         <span class="hint">用這張卡目前的內容（含還沒存的修改）給下一步建議</span>
         <button type="button" class="primary small" id="btn-ai">AI 建議</button>

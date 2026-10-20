@@ -29,7 +29,7 @@
 - 資料層 `gdb` 模仿舊 `window.claude.use("db")`（collection/onSnapshot/add/doc.update/set/delete），讀寫 realty-data；寫入排隊、衝突重讀再寫。新增 id：clients＝`c`+三位數編號、listings＝L 編號、其他亂數。
 - 不再叫醒雲端執行器：送到 Threads-Bin／待發／排程直接寫 threads-poster `drafts/<id>.json`；同步照片寫 `sync/<slug>`；回覆留言寫 `outbox/<id>.txt`、不回寫 `handled/<id>.txt`；同事物件刪除直接改 drafts 與 schedule.json；物件規格寫 `data/listings.json`。
 - 貼文狀態、數據、留言、縮圖從 threads-poster 讀（drafts、stats.json、comments.json、reply_log.json、listings/<slug>/thumbs），只疊在畫面上、不回寫 realty-data。
-- AI 建議／整理／AI 寫文案：按鈕提示「到 Claude Code 對話說…」，由 Code 在對話裡做。
+- AI 建議／整理／AI 寫文案：頁面上不能用，2026-10-20 三顆按鈕都藏起來了（hidden，程式保留以免報錯）；口述回報、建議、文案都由 Code 在對話裡做。
 - Threads 分頁（2026-10-20）：沒有「我的庫存物件」「同事精選物件A」；Code 寫的文案存 realty-data `data/posts/<id>.json`（status 草稿、source code），頁面「Code 寫好的文案」每篇有「發到 Threads-Bin」「刪除」兩顆。Google 日曆：頁面只記 calendarOps，聖斌說「同步日曆」時 Code 讀 calendarOps 用連接器處理，做完把 status 改「完成」、寫 doneAt。
 - collections：clients（買方）、leads（待核對）、listings（庫存＋開發中屋主）、events（行程）、calendarOps（Google 日曆待同步）、posts、coListings（同事物件）、coCleanup、comments、jobs。
 - 客戶分類與追蹤頻率：斡旋買方每天、A買 2 天、B買每週 2 次、C買每週 1 次。
