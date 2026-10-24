@@ -1,0 +1,7 @@
+[
+  {
+    "at": "2026-10-24T15:00:57+08:00",
+    "tracker_id": "R202610241500p3",
+    "error": "Threads API 錯誤 400：{\"error\":{\"message\":\"The requested resource does not exist\",\"type\":\"OAuthException\",\"code\":24,\"error_subcode\":4279009,\"is_transient\":false,\"error_user_title\":\"Media Not Found\",\"error_user_msg\":\"The media with id 17910557109560109 cannot be found.\",\"fbtrace_id\":\"AM1PKA7Zp01yY1qeMGr"
+  }
+]
