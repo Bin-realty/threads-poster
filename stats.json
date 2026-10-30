@@ -1,6 +1,19 @@
 {
- "updated_at": "2026-10-30T07:01:26+08:00",
- "posts": {},
+ "updated_at": "2026-10-31T06:58:28+08:00",
+ "posts": {
+  "18120795818047874": {
+   "views": 97,
+   "likes": 0,
+   "replies": 1,
+   "reposts": 0,
+   "quotes": 0,
+   "shares": 0,
+   "tracker_id": "R202610302240p4",
+   "slug": "l014",
+   "posted_at": "2026-10-30T22:41:19+08:00",
+   "permalink": "https://www.threads.com/@a0958810178/post/DfH0cdJEW3X"
+  }
+ },
  "errors": [
   "18051541406819524: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '18051541406819524' does not exist, cann",
   "18098106158540169: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '18098106158540169' does not exist, cann",
@@ -9,8 +22,8 @@
   "18131734657819705: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '18131734657819705' does not exist, cann",
   "17965540728239153: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '17965540728239153' does not exist, cann",
   "18159083878509807: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '18159083878509807' does not exist, cann",
+  "18130017031832386: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '18130017031832386' does not exist, cann",
   "18194369503395625: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '18194369503395625' does not exist, cann",
-  "18094389329461719: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '18094389329461719' does not exist, cann",
-  "17999680917013912: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '17999680917013912' does not exist, cann"
+  "18094389329461719: Threads API 錯誤 400：{\"error\":{\"message\":\"Unsupported get request. Object with ID '18094389329461719' does not exist, cann"
  ]
 }
