@@ -8,7 +8,7 @@
 |---|---|---|
 | 追蹤台（客戶、庫存、行程、Threads 文案） | 頁面：本 repo `docs/tracker.html`（https://bin-realty.github.io/threads-poster/tracker.html）。資料：**私人 repo `Bin-realty/realty-data`** 的 `data/<collection>/<id>.json`（本機 `C:\Users\GIGABYTE\realty-system\realty-data`）。舊版 artifact `https://claude.ai/artifact/X1cGrdja16py9etPVRceza` 當備份；`tracker/index.html` 是舊版原始碼 | 全部 Code：改頁面 push 本 repo；改資料 push realty-data。搬家步驟見 realty-data 的 MIGRATION.md |
 | Threads-Bin（排程發 Threads 貼文） | `docs/index.html`（GitHub Pages：https://bin-realty.github.io/threads-poster/）＋ `scripts/*.py`（GitHub Actions） | Code 改完直接 push 到 main 就上線 |
-| 每日晨報、口述回報、Google 日曆、售資 PDF | Code 的排程任務（指示在 realty-data `docs/晨報指示.md`）＋Code 對話（口述回報直接改 realty-data 的 data/ 並 push；日曆用 Google Calendar 連接器） | Code |
+| 口述回報、Google 日曆、售資 PDF | Code 對話（口述回報直接改 realty-data 的 data/ 並 push；日曆用 Google Calendar 連接器） | Code |
 
 **本 repo 是公開的**（GitHub Pages 免費版要公開）。客戶、屋主、電話、門牌、底價、規則文件一律只放 realty-data，**絕不 commit 進 threads-poster**。
 
@@ -63,7 +63,7 @@
 - Threads 真的發文前可在草稿加 `"dry": true` 試跑。
 
 ## 待辦（做之前先跟聖斌確認）
-0. **搬家（realty-data 的 MIGRATION.md）**：第 1、2 步已做（2026-10-19），等聖斌驗收新追蹤台；驗收過才做第 3 步資料整理、第 4 步晨報排程。
+0. **搬家（realty-data 的 MIGRATION.md）**：第 1、2 步已做（2026-10-19），等聖斌驗收新追蹤台；驗收過才做第 3 步資料整理（第 4 步晨報排程已於 2026-11-04 取消）。
 1. 實測草稿編輯器「上傳照片」「同步 Google 相簿」照片真的進 `listings/<slug>/` 並隨貼文發出。
 2. 同事物件草稿在 queue.py 發文時規格、照片正常。
 3. 設定頁：署名／電話／證號／LINE／學區名單／repo 可自行填。
