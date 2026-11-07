@@ -149,9 +149,22 @@ td.cmp{min-width:96px}
 .tiny{font-size:12px;color:var(--faint);margin-top:8px;line-height:1.5}
 
 .ftr{max-width:1120px;margin:0 auto;padding:0 12px 24px;font-size:12.5px;color:var(--muted);line-height:1.6}
-.ftr .box{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 18px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
-.ftr b{color:var(--teal);font-size:14px}
-.ftr .ct a{display:inline-block;margin-right:12px;font-weight:700;text-decoration:none}
+.vcard{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 20px;display:grid;grid-template-columns:1.1fr 1.4fr auto;gap:20px;align-items:center;color:var(--ink);border-top:4px solid var(--orange)}
+.vcard .nm{font-size:24px;font-weight:900;color:var(--teal);letter-spacing:2px;line-height:1.2}
+.vcard .nm small{font-size:13px;font-weight:500;color:var(--muted);margin-left:8px;letter-spacing:0}
+.vcard .co{font-size:14.5px;font-weight:700;color:var(--orange);margin-top:3px}
+.vcard .tag{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5}
+.vcard .cta{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.vcard .cta .btn{text-decoration:none;padding:8px 12px;font-size:13px}
+.info{display:grid;gap:3px;font-size:13px;border-left:1px solid var(--line);padding-left:20px;margin:0}
+.info div{display:flex;gap:8px;align-items:baseline}
+.info dt{color:var(--faint);flex:none;width:46px;font-size:12px}
+.info dd{color:var(--ink);margin:0}
+.info a{text-decoration:none;font-weight:700;color:var(--teal)}
+.qr{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--muted);text-align:center}
+.qr img{width:124px;height:124px;border-radius:10px;border:1px solid var(--line);display:block}
+.qr b{color:var(--teal);font-size:12.5px}
+@media (max-width:760px){.vcard{grid-template-columns:1fr;gap:14px;padding:16px}.info{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:12px}.qr{flex-direction:row;gap:14px;justify-content:flex-start;text-align:left;border-top:1px solid var(--line);padding-top:12px}.qr img{width:108px;height:108px}}
 
 /* 手機底部固定列 */
 .sticky{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(15,76,92,.12);padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:none;align-items:center;justify-content:space-between;gap:10px;z-index:20}
@@ -167,7 +180,9 @@ td.cmp{min-width:96px}
   body{background:#fff;font-size:12px}
   .hdr{background:var(--teal)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:12px 0;margin:0}
   .wrap{grid-template-columns:1fr;gap:10px;padding:0;margin-top:8px}
-  .card,.kpi,.hero{box-shadow:none;border:1px solid var(--line);break-inside:avoid}
+  .card,.kpi,.hero,.vcard{box-shadow:none;border:1px solid var(--line);break-inside:avoid}
+  .vcard{border-top:3px solid var(--orange);grid-template-columns:1.1fr 1.4fr auto;gap:16px}
+  .qr img{width:100px;height:100px}
   .hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .no-print,.sticky,.toast,.tabs,details.adv{display:none!important}
   .tbl{max-height:none;overflow:visible;border:0}
@@ -287,9 +302,21 @@ td.cmp{min-width:96px}
 </main>
 
 <footer class="ftr">
- <div class="box">
-  <div><b>台灣房屋 松竹十一期特許加盟店　專案經理 蘇聖斌</b><br>買房、換屋、貸款規劃，歡迎直接聯絡，我陪你一步一步把家買對。</div>
-  <div class="ct"><a href="tel:0958810178">📞 0958-810-178</a><a href="https://line.me/R/ti/p/@a0888" target="_blank" rel="noopener">💬 官方 LINE</a></div>
+ <div class="vcard">
+  <div class="who">
+   <div class="nm">蘇聖斌<small>專案經理</small></div>
+   <div class="co">台灣房屋 松竹十一期特許加盟店</div>
+   <div class="tag">買房、換屋、貸款規劃，歡迎直接聯絡，我陪你一步一步把家買對。</div>
+   <div class="cta no-print"><a class="btn p" href="tel:0958810178">📞 撥電話給聖斌</a><a class="btn line" href="https://line.me/R/ti/p/@a0888" target="_blank" rel="noopener">加 LINE 聊聊</a></div>
+  </div>
+  <dl class="info">
+   <div><dt>手機</dt><dd><a href="tel:0958810178">0958-810-178</a>（LINE ID 同號）</dd></div>
+   <div><dt>店電話</dt><dd><a href="tel:0422473587">04-2247-3587</a>　傳真 04-2247-0213</dd></div>
+   <div><dt>地址</dt><dd>台中市北屯區松竹路二段331號</dd></div>
+   <div><dt>公司</dt><dd>尚峰不動產有限公司　統編 45878308</dd></div>
+   <div><dt>專售</dt><dd>大樓、別墅、店面、透套、土地</dd></div>
+  </dl>
+  <div class="qr"><img src="assets/line_qr.png" alt="LINE 加好友 QR code"><b>掃描加 LINE</b><span>有問題隨時問我</span></div>
  </div>
  <p style="margin-top:10px">本試算僅供參考，實際貸款成數、利率、寬限期與月付金以各銀行核貸為準；利息按月計息、四捨五入至元。購屋另需準備契稅、印花稅、代書費、履約保證、保險等費用。</p>
 </footer>
