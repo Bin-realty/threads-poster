@@ -65,6 +65,17 @@ button:disabled{opacity:.55;cursor:default}
 .card .meta{grid-column:1/-1;font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
 .warn{color:var(--today)}
 .card .misc{grid-column:1/-1;font-size:13px;color:var(--muted);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0}
+/* 銷售客戶：兩行精簡列，點一下才展開 */
+.card.cc{padding:10px 12px;gap:2px 10px;align-items:center}
+.card.cc:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.card.cc .name{gap:6px}
+.cc-right{display:flex;gap:8px;align-items:center}
+.cc-right .due{align-self:center}
+.call{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;margin:-4px 0;border-radius:999px;border:1px solid var(--line);background:var(--bg);text-decoration:none;font-size:16px;line-height:1}
+.cc-sub{grid-column:1/-1;color:var(--muted);font-size:13px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-more{grid-column:1/-1;display:flex;flex-direction:column;gap:6px;border-top:1px dashed var(--line);margin-top:6px;padding-top:8px;font-size:14px;min-width:0;overflow-wrap:anywhere;cursor:default}
+.cc-more .lbl{color:var(--muted);font-size:12px;margin-right:6px}
+.cc-more .lg{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .due{font-family:var(--f-mono);font-size:12px;padding:2px 8px;border-radius:999px;white-space:nowrap;align-self:start}
 .due.late{background:var(--late-soft);color:var(--late)} .due.today{background:var(--today-soft);color:var(--today)}
 .due.soon{background:var(--soon-soft);color:var(--soon)} .due.later{background:var(--accent-soft);color:var(--accent)} .due.none{color:var(--muted);border:1px dashed var(--line)}
@@ -494,6 +505,47 @@ function dueClass(c){const n=daysFrom(c.nextDate); if(n===null)return "none"; if
 function dueText(c){const n=daysFrom(c.nextDate); if(n===null)return "未排追蹤"; if(n<0)return "逾期 "+(-n)+" 天"; if(n===0)return "今天"; if(n===1)return "明天"; const[,m,d]=c.nextDate.split("-"); return Number(m)+"/"+Number(d)+"（"+n+" 天後）";}
 const rank=c=>{const n=daysFrom(c.nextDate); return n===null?1e9:n;};
 const el=(tag,cls,txt)=>{const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e;};
+/* 銷售列表（兩行精簡）：短寫優先、沒有短寫就用原文；上次聯繫只算他回報的聯繫與約看，不算我寫的建議或改資料 */
+const openCards=new Set();
+const CONTACT_K=["我已回報完成","已約定看屋"];
+const shortBudget=c=>{ const s=String(c.budgetShort||c.budget||"").trim(); if(!kn(s)) return ""; return /^\d[\d,]*$/.test(s)?s+"萬":s; };
+const shortArea=c=>{ const s=String(c.areaShort||c.area||"").trim(); return kn(s)?s:""; };
+const shortType=c=>{ const s=String(c.typeShort||c.propType||"").trim(); if(!kn(s)) return ""; return s.length>8?s.slice(0,7)+"…":s; };
+const telOf=c=>{ const m=String(c.phone||"").match(/(?:\+?886[-\s]?|0)\d[\d\-\s]{6,12}\d/); if(!m) return ""; const d=m[0].replace(/[^\d+]/g,""); return d.replace(/\D/g,"").length>=8?d:""; };
+const lastContact=c=>{ const a=(c.log||[]).filter(l=>l&&CONTACT_K.includes(l.k)&&/^\d{4}-\d{2}-\d{2}/.test(l.d||"")).map(l=>l.d.slice(0,10)).sort(); return a.length?a[a.length-1]:""; };
+function agoInfo(c){
+  const d=lastContact(c); if(!d) return {t:"尚無聯繫紀錄",k:"none"};
+  const n=Math.max(0,-daysFrom(d)), lim=RULE[c.level];
+  return {t:n===0?"今天":n===1?"昨天":n+" 天前", k:lim&&n>lim?"late":"later"};
+}
+function clientMore(c,k,dup,close){
+  const m=el("div","cc-more");
+  const line=(l,t)=>{ const d=el("div"); d.append(el("span","lbl",l),document.createTextNode(t)); m.append(d); };
+  line("下一步",c.nextAction||"尚未設定");
+  const dd=el("div"); dd.append(el("span","lbl","下次追蹤"),el("span","due "+k,dueText(c))); m.append(dd);
+  if(kn(c.need)) line("需求",c.need);
+  if(kn(c.budget)&&c.budgetShort&&c.budgetShort!==c.budget) line("預算",c.budget);
+  if(kn(c.area)&&c.areaShort&&c.areaShort!==c.area) line("區域",c.area);
+  if(kn(c.propType)&&shortType(c)!==c.propType) line("型態",c.propType);
+  if(kn(c.who)) line("同住／決策人",c.who);
+  if(kn(c.phone)) line("電話／LINE",c.phone);
+  const ps=(c.props||[]).filter(p=>p&&p.n); if(ps.length) line("物件",ps.map(p=>p.n+(kn(p.ask)?"（開價 "+p.ask+"）":"")).join("；"));
+  const pend=(c.pending||[]).filter(Boolean); if(pend.length) line("待確認 "+pend.length+" 項",pend.join("、"));
+  const meta=el("div","meta");
+  if(c.code) meta.append(el("span","code","編號 "+c.code));
+  meta.append(el("span",null,c.viewed?"✅ 已帶看":"未帶看"), el("span",null,c.line!=="未加LINE"?"💬 已加LINE":"未加LINE"));
+  meta.append(el("span",c.inDate?null:"warn",c.inDate?"進件 "+c.inDate.replaceAll("-","/")+"（第 "+(1-daysFrom(c.inDate))+" 天）":"進件日未記錄"));
+  if(kn(c.source)) meta.append(el("span",null,"來源："+c.source));
+  const devs=listings.filter(x=>(String(x.forBuyer||"").match(/\d{3}/g)||[]).includes(c.code)&&!["已成交","下架"].includes(x.stage)); if(devs.length) meta.append(el("span",null,"買帶開發："+devs.map(x=>x.code+" "+(x.community||x.addr||"")+(kn(x.owner)?"（"+x.owner+"）":"")).join("、")));
+  if(c.level==="斡旋買方"&&!c.nextDate) meta.append(el("span","warn","⚠ 斡旋買方沒排追蹤日"));
+  if(dup) meta.append(el("span","warn","⚠ 可能和 "+dup+" 重複"));
+  if(c.reminder) meta.append(el("span",null,"提醒："+c.reminder));
+  m.append(meta);
+  (c.log||[]).slice(-3).reverse().forEach(l=>{ if(l&&l.d) m.append(el("div","lg",l.d.slice(5).replace("-","/")+" "+(l.k||"")+"："+(l.t||""))); });
+  if(c.misc) line("雜項",c.misc);
+  const row=el("div","row"), eb=el("button","small","編輯／寫紀錄"); eb.type="button"; eb.addEventListener("click",e=>{ e.stopPropagation(); openEditor(c); }); const cb=el("button","small","收起"); cb.type="button"; cb.addEventListener("click",e=>{ e.stopPropagation(); close(); }); row.append(eb,cb); m.append(row);
+  return m;
+}
 
 function render(){
   const cnt={late:0,today:0,soon:0,none:0};
@@ -510,28 +562,25 @@ function render(){
   const list=$("#list"); list.replaceChildren();
   if(!rows.length){ list.append(el("div","empty",clients.length?"這個條件下沒有客戶。":"還沒有客戶。在上面打一句話，或按「手動新增客戶」。")); }
   for(const c of rows){
-    const k=dueClass(c), b=el("button","card "+k); b.type="button";
+    const k=dueClass(c), b=el("div","card cc "+k), open=openCards.has(c.id);
+    b.setAttribute("role","button"); b.tabIndex=0; b.setAttribute("aria-expanded",String(open)); b.dataset.id=c.id;
     const nm=el("div","name");
-    if(c.code) nm.append(el("span","code",c.code));
     nm.append(el("span",null,c.name||"（未命名）"));
     if(c.level) nm.append(el("span","tag lv-"+c.level,c.level));
-    nm.append(el("span","tag "+(c.viewed?"seen":"plain"),c.viewed?"✅ 已帶看":"未帶看"));
-    nm.append(el("span","tag "+(c.line!=="未加LINE"?"seen":"plain"),c.line!=="未加LINE"?"💬 已加LINE":"未加LINE"));
-    if(c.propType) nm.append(el("span","tag plain",c.propType));
+    const ty=shortType(c);
+    if(ty) nm.append(el("span","tag plain",ty));
     else if(c.role && c.role!=="買方") nm.append(el("span","tag plain",c.role));
-    const meta=el("div","meta");
-    meta.append(el("span",c.inDate?null:"warn",c.inDate?"進件 "+c.inDate.replaceAll("-","/")+"（第 "+(1-daysFrom(c.inDate))+" 天）":"進件日未記錄"));
-    const pend=(c.pending||[]).length; if(pend) meta.append(el("span","warn","待確認 "+pend+" 項"));
-    const devs=listings.filter(x=>(String(x.forBuyer||"").match(/\d{3}/g)||[]).includes(c.code)&&!["已成交","下架"].includes(x.stage)); if(devs.length) meta.append(el("span",null,"買帶開發："+devs.map(x=>x.code+" "+(x.community||x.addr||"")+(kn(x.owner)?"（"+x.owner+"）":"")).join("、")));
-    if(c.level==="斡旋買方"&&!c.nextDate) meta.append(el("span","warn","⚠ 斡旋買方沒排追蹤日"));
-    const dup=dupOf(c); if(dup) meta.append(el("span","warn","⚠ 可能和 "+dup+" 重複"));
-    if(c.reminder) meta.append(el("span",null,"提醒："+c.reminder));
-    const last=(c.log||[]).slice(-1)[0]; if(last) meta.append(el("span",null,"最近："+last.d.slice(5).replace("-","/")+" "+last.k));
-    b.append(nm, el("span","due "+k,dueText(c)),
-      el("div","need",[c.budget,c.area].filter(Boolean).join("｜")||"預算與區域未記錄"),
-      el("div","next","下一步："+(c.nextAction||"尚未設定")), meta);
-    if(c.misc) b.append(el("div","misc","雜項："+c.misc));
-    b.addEventListener("click",()=>openEditor(c));
+    const dup=dupOf(c);
+    if(dup||(c.level==="斡旋買方"&&!c.nextDate)) nm.append(el("span","warn","⚠"));
+    const right=el("div","cc-right"), ago=agoInfo(c);
+    right.append(el("span","due "+ago.k,ago.t));
+    const tel=telOf(c);
+    if(tel){ const a=el("a","call","📞"); a.href="tel:"+tel; a.setAttribute("aria-label","撥電話給"+(c.name||"客戶")); a.addEventListener("click",e=>e.stopPropagation()); right.append(a); }
+    b.append(nm, right, el("div","cc-sub",(shortBudget(c)||"預算未填")+"・"+(shortArea(c)||"區域未填")));
+    const tog=()=>{ if(openCards.has(c.id)) openCards.delete(c.id); else openCards.add(c.id); render(); const n=[...$("#list").children].find(x=>x.dataset.id===c.id); if(n) n.focus({preventScroll:true}); };
+    if(open) b.append(clientMore(c,k,dup,tog));
+    b.addEventListener("click",e=>{ if(e.target.closest(".cc-more")) return; tog(); });
+    b.addEventListener("keydown",e=>{ if(e.target!==b) return; if(e.key==="Enter"||e.key===" "){ e.preventDefault(); tog(); } });
     list.append(b);
   }
   const ll=$("#lead-list"); ll.replaceChildren();
@@ -1045,6 +1094,8 @@ $("#ed").addEventListener("submit",async e=>{
     need:$("#f-need").value.trim(), who:$("#f-who").value.trim(), nextDate:fixYear($("#f-next").value), reminder:$("#f-rem").value,
     nextAction:$("#f-action").value.trim(), source:$("#f-source").value.trim(), inDate:fixYear($("#f-indate").value), viewed:$("#f-viewed").checked, line:$("#f-line").checked?"已加LINE":"未加LINE",
     pending:$("#f-pending").value.split("\n").map(s=>s.trim()).filter(Boolean), misc:$("#f-misc").value.trim(), props:readProps(), updatedAt:now});
+  /* 原文改了，舊的列表短寫就作廢，列表改顯示新原文 */
+  if(original) [["budget","budgetShort"],["area","areaShort"],["propType","typeShort"]].forEach(([f,s])=>{ if(original[s]&&(original[f]||"")!==(body[f]||"")) body[s]=""; });
   const add=[];
   if(original){
     const nz=v=>BLANKV(v)?"":v; const ch=TRACKED.filter(([k])=>nz(original[k]||"")!==nz(body[k]||"")).map(([k,l])=>l+"：「"+(original[k]||"未記錄")+"」→「"+(body[k]||"空白")+"」");

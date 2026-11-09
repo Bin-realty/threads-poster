@@ -35,6 +35,9 @@
 - Threads 分頁（2026-10-20）：沒有「我的庫存物件」「同事精選物件A」；Code 寫的文案存 realty-data `data/posts/<id>.json`（status 草稿、source code），頁面「Code 寫好的文案」每篇有「發到 Threads-Bin」「刪除」兩顆。Google 日曆：頁面只記 calendarOps，聖斌說「同步日曆」時 Code 讀 calendarOps 用連接器處理，做完把 status 改「完成」、寫 doneAt。
 - collections：clients（買方）、leads（待核對）、listings（庫存＋開發中屋主）、events（行程）、calendarOps（Google 日曆待同步）、posts、coListings（同事物件）、coCleanup、comments、jobs。
 - 客戶分類與追蹤頻率：斡旋買方每天、A買 2 天、B買每週 2 次、C買每週 1 次。
+- 銷售列表（2026-11-09 聖斌要求改精簡）：每位兩行。第一行：稱呼、分類、型態標籤，右邊「上次聯繫幾天前」（超過該分類的追蹤天數變紅）＋撥號鈕（電話欄有號碼才出現，不直接顯示號碼）；第二行：預算・區域。點一下才展開（下一步、下次追蹤、需求、物件、待確認、編號、最近三筆紀錄、「編輯／寫紀錄」「收起」）。編號不在列表上顯示。
+  - 列表顯示用短寫欄位 `budgetShort`／`areaShort`／`typeShort`（Code 寫，頁面沒有輸入框）；沒有短寫就顯示原文。他在頁面改了預算／區域／型態原文，對應短寫會自動清空。預算只有數字時列表自動補「萬」。
+  - 「上次聯繫」只算 log 的「我已回報完成」「已約定看屋」，不算助理建議、客需異動、預定追蹤。
 - 庫存狀態：一般委託中／專任委託中／開發中／斡旋中／已成交／下架。forBuyer＝買帶開發；devHot＝有機會委託。
 - 空白欄位存 ""（頁面紅框），不寫「未記錄」。售價格式「3,080萬」。地址以「台中市」開頭。屋齡由完工日（民國 111.02.23）推算，不抄廣告。
 - 刪除鈕都是按兩次；第一下不改字，用 toast 提示。
@@ -62,6 +65,7 @@
 ## 測試
 - 這台電腦（聖斌的 Windows）沒有 node／Python／Playwright。改用 Claude 內建瀏覽器：本機跑一個假的 GitHub API（PowerShell HttpListener，資料用 repo 副本），頁面把 `api.github.com` 換成 localhost，跑一遍主要按鈕，確認無錯誤、390px 無橫向溢出。**不要拿真的 repo 測寫入。**
 - Threads 真的發文前可在草稿加 `"dry": true` 試跑。
+- 新電腦（華碩，2026-11-04 起）有 node 和 Chrome：realty-data `tools/tracker-test/`（server.js 假 GitHub API＋test.js 用 puppeteer-core 開無頭 Chrome，390px 截圖、檢查橫向溢出與錯誤）。複製到暫存資料夾 `npm i puppeteer-core` 後執行；寫入只留在記憶體。
 
 ## 待辦（做之前先跟聖斌確認）
 0. **搬家（realty-data 的 MIGRATION.md）**：第 1、2 步已做（2026-10-19），等聖斌驗收新追蹤台；驗收過才做第 3 步資料整理（第 4 步晨報排程已於 2026-11-04 取消）。
