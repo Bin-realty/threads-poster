@@ -842,6 +842,30 @@ let byOwner=false; try{byOwner=localStorage.getItem("byOwner")==="1";}catch(e){}
 const buyersOf=l=>{const codes=(String(l.forBuyer||"").match(/\d{3}/g)||[]); return codes.map(cd=>clients.find(c=>c.code===cd)).filter(Boolean);};
 const isTopDev=l=>l.stage==="開發中"&&buyersOf(l).some(c=>c.level==="斡旋買方");
 const devRank=l=>isTopDev(l)?0:((l.stage==="開發中"&&l.devHot==="有機會")?1:2);
+/* 庫存精簡列（跟銷售一樣：兩行、點一下展開）；上次回報＝最後一筆「我已回報完成／已約定看屋」 */
+const openDev=new Set();
+const lastReport=l=>{ const a=(l.log||[]).filter(x=>x&&CONTACT_K.includes(x.k)&&/^\d{4}-\d{2}-\d{2}/.test(x.d||"")).map(x=>x.d.slice(0,10)).sort(); return a.length?a[a.length-1]:""; };
+function reportText(l){ const d=lastReport(l); if(!d) return "尚無回報"; const n=Math.max(0,-daysFrom(d)); return n===0?"今天":n===1?"昨天":n+" 天前"; }
+function entrustInfo(l){ const committed=/委託中$/.test(l.stage||""); if(!kn(l.entrustEnd)) return committed?{t:"到期未填",k:"none",remind:false}:null; const n=daysFrom(l.entrustEnd); if(n===null) return committed?{t:"到期未填",k:"none",remind:false}:null; const md=l.entrustEnd.slice(5).replace("-","/"); if(n<0) return {t:"已到期 "+(-n)+" 天",k:"late",remind:true}; if(n<=7) return {t:"剩 "+n+" 天到期",k:n<=2?"today":"soon",remind:true}; return {t:"到 "+md+"（"+n+" 天）",k:"later",remind:false}; }
+function devMore(l, close){
+  const m=el("div","cc-more");
+  const line=(lb,t)=>{ const d=el("div"); d.append(el("span","lbl",lb),document.createTextNode(t)); m.append(d); };
+  line("下一步", l.nextAction||"尚未設定");
+  if(l.entrustType||l.entrustEnd) line("委託", (l.entrustType||"種類未記錄")+(kn(l.entrustEnd)?"，到 "+l.entrustEnd.replaceAll("-","/"):""));
+  const sp=[["門牌",l.addr],["樓層",l.floors],["建坪",l.area],["屋齡",ageOf(l)],["車位",parkOf(l)]].filter(([,v])=>kn(v)).map(([a,v])=>a+" "+v).join("・"); if(sp) line("規格", sp);
+  if(ownName(l)||kn(l.ownerPhone)) line("屋主", (ownName(l)||"未填姓名")+(kn(l.ownerPhone)?" "+l.ownerPhone:"")+(l.ownerLine==="已加LINE"?"｜已加LINE":"｜尚未加LINE"));
+  const pend=(l.pending||[]).filter(Boolean); if(pend.length) line("待確認 "+pend.length+" 項", pend.join("、"));
+  const meta=el("div","meta");
+  if(l.code) meta.append(el("span","code","編號 "+l.code));
+  const sf=sheetFilled(l); meta.append(el("span",sf.n<sf.total?"warn":null,"售資欄位 "+sf.n+"/"+sf.total));
+  const mc=matchClients(l).length; if(mc) meta.append(el("span",null,"可配客戶 "+mc+" 位"));
+  const bs=buyersOf(l); if(bs.length) meta.append(el("span",null,"買帶開發："+bs.map(c=>c.code+" "+c.name).join("、")));
+  warnList(l).slice(0,4).forEach(w=>meta.append(el("span","warn","注意："+w)));
+  m.append(meta);
+  (l.log||[]).slice(-3).reverse().forEach(x=>{ if(x&&x.d) m.append(el("div","lg",x.d.slice(5).replace("-","/")+" "+(x.k||"")+"："+(x.t||""))); });
+  const row=el("div","row"), eb=el("button","small","編輯／寫紀錄"); eb.type="button"; eb.addEventListener("click",e=>{e.stopPropagation(); openListing(l);}); const cb=el("button","small","收起"); cb.type="button"; cb.addEventListener("click",e=>{e.stopPropagation(); close();}); row.append(eb,cb); m.append(row);
+  return m;
+}
 function renderDev(){
   $("#n-dev").textContent=listings.filter(l=>!["已成交","下架"].includes(l.stage)).length;
   const ds=$("#lst-dist"), curD=ds.value; const dists=[...new Set(listings.map(distOf).filter(Boolean))].sort();
@@ -857,30 +881,19 @@ function renderDev(){
   let curG=null;
   for(const l of rows){
     if(byOwner){ const g=ownerKey(l)||"~"; if(g!==curG){ curG=g; const cnt=rows.filter(x=>(ownerKey(x)||"~")===g).length; const ph=rows.filter(x=>(ownerKey(x)||"~")===g).map(x=>x.ownerPhone).find(kn); const h=el("h3","ownerhead",g==="~"?"屋主未填（"+cnt+" 件）":"屋主 "+(ownName(l)||"（只有電話）")+(ph?"｜"+ph:"")+"（"+cnt+" 件）"); box.append(h);} }
-    const k=dueClass(l), b=el("button","card lst "+k); b.type="button";
+    const k=dueClass(l), open=openDev.has(l.id), b=el("div","card cc "+k);
+    b.setAttribute("role","button"); b.tabIndex=0; b.setAttribute("aria-expanded",String(open)); b.dataset.id=l.id;
     const nm=el("div","name");
-    if(l.code) nm.append(el("span","code",l.code));
     nm.append(el("span",null,l.community||l.addr||"（未填門牌）"));
     if(kn(l.propType)) nm.append(el("span","tag plain",l.propType));
-    if(l.stage) nm.append(el("span","stage s-"+l.stage,isTopDev(l)?"買帶開發・最高優先":(l.stage==="開發中"?(l.devHot==="有機會"?"開發中・有機會（優先）":"開發中"):l.stage)));
-    if(isTopDev(l)) nm.querySelector(".stage").classList.add("top");
-    const sp=el("div","specs");
-    const pi=priceInfo(l).map(s=>s.replace(/（.*$/,"").replace("約 ","").replace(" 萬/坪","萬/坪"));
-    [["",l.addr],["格局 ",l.layout],["建坪 ",l.area],["樓層 ",l.floors],["屋齡 ",ageOf(l)],["梯戶比 ",l.elevatorRatio],["車位 ",parkOf(l)]].forEach(([k2,v])=>{ if(kn(v)){const s=el("span"); if(k2)s.append(k2); s.append(el("b",null,v)); sp.append(s);} });
-    pi.forEach(s=>sp.append(el("span",null,s)));
-    const meta=el("div","meta");
-    meta.append(el("span",null,"追蹤："+dueText(l)));
-    if(l.entrustType||l.entrustEnd) meta.append(el("span",null,"委託："+(l.entrustType||"種類未記錄")+(l.entrustEnd?"，到 "+l.entrustEnd.replaceAll("-","/"):"")));
-    const shows=(l.log||[]).filter(x=>x.k==="已約定看屋"||/帶看/.test(x.t)).length; if(shows) meta.append(el("span",null,"帶看相關紀錄 "+shows+" 筆"));
-    const pend=(l.pending||[]).length; if(pend) meta.append(el("span","warn","待確認 "+pend+" 項"));
-    const sf=sheetFilled(l); meta.append(el("span",sf.n<sf.total?"warn":null,"售資欄位 "+sf.n+"/"+sf.total));
-    const mc=matchClients(l).length; if(mc) meta.append(el("span",null,"可配客戶 "+mc+" 位"));
-    warnList(l).slice(0,4).forEach(w=>meta.append(el("span","warn","注意："+w)));
-    b.append(nm, el("span","price",l.ask||"售價未填"), sp, el("div","next","下一步："+(l.nextAction||"尚未設定")), meta);
-    if(kn(l.projectName)) { const pn=el("div","need","案名："+l.projectName); b.append(pn); }
-    const bs=buyersOf(l); if(bs.length){ b.append(el("div","need buyerline","為 "+bs.map(c=>c.code+" "+c.name+(c.level?"（"+c.level+"）":"")).join("、")+" 開發")); }
-    if(ownName(l)||kn(l.ownerPhone)){ const so=sameOwner(l); const ow=el("div","need ownerline"); ow.append("屋主："+(ownName(l)||"未填姓名")+(kn(l.ownerPhone)?" "+l.ownerPhone:"")+(l.ownerLine==="已加LINE"?"｜✅ 已加LINE":"｜尚未加LINE")); if(so.length){ ow.append(el("b",null,"｜同屋主還有 "+so.length+" 件："+so.map(x=>x.code+" "+(x.community||x.addr||"")).join("、"))); } b.append(ow); }
-    b.addEventListener("click",()=>openListing(l));
+    if(l.stage){ const sg=el("span","stage s-"+l.stage,isTopDev(l)?"買帶開發・最高優先":(l.stage==="開發中"?(l.devHot==="有機會"?"開發中・有機會（優先）":"開發中"):l.stage)); if(isTopDev(l)) sg.classList.add("top"); nm.append(sg); }
+    const right=el("div","cc-right"), ei=entrustInfo(l);
+    if(ei) right.append(el("span","due "+ei.k,(ei.remind?"⏰ ":"")+ei.t));
+    b.append(nm, right, el("div","cc-sub",(l.ask||"售價未填")+"・"+(kn(l.layout)?l.layout:"格局未填")+"・回報 "+reportText(l)));
+    const tog=()=>{ if(openDev.has(l.id)) openDev.delete(l.id); else openDev.add(l.id); renderDev(); const n=[...$("#lst-list").children].find(x=>x.dataset&&x.dataset.id===l.id); if(n) n.focus({preventScroll:true}); };
+    if(open) b.append(devMore(l,tog));
+    b.addEventListener("click",e=>{ if(e.target.closest(".cc-more")) return; tog(); });
+    b.addEventListener("keydown",e=>{ if(e.target!==b) return; if(e.key==="Enter"||e.key===" "){ e.preventDefault(); tog(); } });
     box.append(b);
   }
 }
